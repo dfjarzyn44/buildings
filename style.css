@@ -59,7 +59,7 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 #stage { 
   display: flex; align-items: flex-end; justify-content: flex-start; 
   gap: 30px; 
-  padding: 120px 30px 25px 30px; /* Zwiększony górny zapas wolnego miejsca */
+  padding: 40px 30px 25px 30px; 
   box-sizing: border-box;
   min-width: 100%; width: max-content;
   background: linear-gradient(to bottom, transparent calc(100% - 25px), #4CAF50 calc(100% - 25px), #2e7d32 100%);
@@ -72,36 +72,35 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 }
 .building-item img { display: block; height: auto; width: auto; pointer-events: none; margin: 0; padding: 0; }
 
-/* STAŁE I CZYTELNE KÓŁKO ZAMKNIĘCIA */
+/* PRZYCISK X PONIŻEJ DYMKU INFORMACYJNEGO */
 .remove-btn {
-  position: absolute; 
-  top: -35px; 
   background: #ff4d4d; 
   color: white; 
   border: none; 
   border-radius: 50%;
-  width: 28px; 
-  height: 28px; 
+  width: 26px; 
+  height: 26px; 
   font-size: 16px; 
-  line-height: 28px;
+  line-height: 24px;
   text-align: center;
   padding: 0;
   cursor: pointer; 
   z-index: 10;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  margin-bottom: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 .remove-btn:hover {
   background: #cc0000;
 }
 
-/* WIĘKSZE DYMKI INFORMACYJNE */
+/* DYMKI INFORMACYJNE - WIĘKSZE I DOKŁADNIE NAD PRZYCISKIEM */
 .building-info { 
-  margin-bottom: 8px; 
-  font-size: 14px; 
+  margin-bottom: 6px; 
+  font-size: 15px; 
   font-weight: bold;
   text-align: center; 
   background: rgba(255,255,255,0.95); 
-  padding: 6px 10px; 
+  padding: 6px 12px; 
   border: 1px solid #ccc; 
   border-radius: 6px; 
   white-space: nowrap;
@@ -110,30 +109,24 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 
 .extra-info {
   display: none;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: normal;
   color: #444;
-  margin-top: 5px;
+  margin-top: 4px;
   border-top: 1px solid #eee;
-  padding-top: 5px;
+  padding-top: 4px;
 }
 
-/* Gdy dodamy klasę 'show-details' na #stage, pokazujemy dodatkowe info */
 #stage.show-details .extra-info { display: block; }
 
-/* LOKALIZACJA W KAFELKACH */
 .card-location {
   margin: 4px 0 0 0;
   font-size: 11px;
   color: #666;
 }
 
-/* ROZWIĄZANIA MOBILNE (TYLKO DLA EKRANÓW DO 480px) */
 @media (max-width: 480px) {
-  body {
-    margin: 10px;
-  }
-
+  body { margin: 10px; }
   .grid {
     display: grid;
     grid-template-columns: none;
@@ -147,9 +140,5 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
     padding: 10px;
     box-sizing: border-box;
   }
-
-  .card {
-    width: 150px;
-    box-sizing: border-box;
-  }
+  .card { width: 150px; box-sizing: border-box; }
 }
