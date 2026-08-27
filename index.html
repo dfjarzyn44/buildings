@@ -1,1 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building Size Comparison</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+  <h1>Building Size Comparison</h1>
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Search by building, city or country...">
+  </div>
+  <div class="grid" id="buildingsGrid"></div>
+
+  <div class="stage-header">
+    <h2>Comparison Area</h2>
+    <div class="zoom-controls">
+      <label class="info-toggle">
+        <input type="checkbox" id="showInfoCheckbox"> Show details
+      </label>
+      <button class="btn-action" id="toggleFsBtn" onclick="toggleFullscreen()">Open Interactive Canvas</button>
+      <span>Scale: <strong id="zoomVal">100%</strong></span>
+      <button onclick="clearStage()">Reset</button>
+    </div>
+  </div>
+
+  <div class="stage-wrapper" id="stageWrapper">
+    <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
+    <div id="stage"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
