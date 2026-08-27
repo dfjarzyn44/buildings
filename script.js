@@ -56,7 +56,8 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 100) : wrapperH;
+  /* Zwiększono zapas nad budynkiem ze 100px do 250px */
+  const neededH = maxBHeight > 0 ? (maxBHeight + 250) : wrapperH;
   stage.style.height = neededH + 'px';
 }
 
@@ -97,7 +98,6 @@ function applyTransform() {
 function initInteractions() {
   const wrapper = document.getElementById('stageWrapper');
   
-  // Checkbox logic
   const showInfoCheckbox = document.getElementById('showInfoCheckbox');
   showInfoCheckbox.addEventListener('change', (e) => {
     const stage = document.getElementById('stage');
@@ -252,8 +252,8 @@ function addToStage(building) {
   const h_m = building.height_m || 'N/A';
   const h_ft = building.height_ft || 'N/A';
 
+  /* Zmieniono kolejność elementów: Dymek u góry, kółko zamknij poniżej niego */
   item.innerHTML = `
-    <button class="remove-btn" onclick="this.parentElement.remove(); fitToStage();">&times;</button>
     <div class="building-info">
       <strong>${building.name}</strong>
       <div class="extra-info">
@@ -261,6 +261,7 @@ function addToStage(building) {
         Height: ${h_m}m / ${h_ft}ft
       </div>
     </div>
+    <button class="remove-btn" onclick="this.parentElement.remove(); fitToStage();">&times;</button>
     <img src="${building.image_2d}" alt="${building.name}">
   `;
   
