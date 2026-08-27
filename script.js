@@ -52,10 +52,12 @@ function addBuildingToStage(item) {
   const bEl = document.createElement('div');
   bEl.className = 'building-item';
   
+  const targetHeight = item.height * 2;
+
   const img = document.createElement('img');
   img.src = item.image;
   img.alt = item.name;
-  img.style.height = `${item.height * 2}px`;
+  img.style.height = `${targetHeight}px`;
 
   const uiContainer = document.createElement('div');
   uiContainer.className = 'building-ui-container';
@@ -87,6 +89,7 @@ function addBuildingToStage(item) {
   bEl.appendChild(img);
   
   stage.appendChild(bEl);
+  updateTransform();
 }
 
 function clearStage() {
