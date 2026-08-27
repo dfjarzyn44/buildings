@@ -1,362 +1,154 @@
-let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
-let isFullscreen = false;
-let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
-let ticking = false;
+let zoomLevel = 1;
+let isPanning = false;
+let startX = 0, startY = 0;
+let translateX = 0, translateY = 0;
 
-async function loadData() {
-  try {
-    const response = await fetch('budynki.json');
-    buildingsData = await response.json();
+let buildingsData = [];
+
+const searchInput = document.getElementById('searchInput');
+const buildingsGrid = document.getElementById('buildingsGrid');
+const stage = document.getElementById('stage');
+const stageWrapper = document.getElementById('stageWrapper');
+const zoomVal = document.getElementById('zoomVal');
+const showInfoCheckbox = document.getElementById('showInfoCheckbox');
+
+fetch('data.json')
+  .then(res => res.json())
+  .then(data => {
+    buildingsData = data;
     renderGrid(buildingsData);
-    setupFilters();
-    initInteractions();
-  } catch (e) {
-    console.error("Błąd ładowania JSON:", e);
-  }
-}
+  })
+  .catch(err => console.error("Error loading data:", err));
 
-function updateDimensionsCache() {
-  const wrapper = document.getElementById('stageWrapper');
-  const stage = document.getElementById('stage');
-  stageDim.wrapperW = wrapper.clientWidth || 1;
-  stageDim.wrapperH = wrapper.clientHeight || 1;
-  stageDim.stageW = stage.scrollWidth || 1;
-  stageDim.stageH = stage.offsetHeight || 1;
-}
+function renderGrid(data) {
+  buildingsGrid.innerHTML = '';
+  data.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = () => addBuildingToStage(item);
 
-function toggleFullscreen() {
-  const wrapper = document.getElementById('stageWrapper');
-  const btn = document.getElementById('toggleFsBtn');
-  
-  isFullscreen = !isFullscreen;
-  
-  if (isFullscreen) {
-    wrapper.classList.add('fullscreen');
-    document.body.classList.add('no-scroll');
-    btn.innerText = " Exit Canvas";
-  } else {
-    wrapper.classList.remove('fullscreen');
-    document.body.classList.remove('no-scroll');
-    btn.innerText = " Open Interactive Canvas";
-  }
-  
-  fitToStage();
-}
+    const locationText = [item.city, item.country].filter(Boolean).join(', ');
 
-function updateStageHeight() {
-  const wrapper = document.getElementById('stageWrapper');
-  const stage = document.getElementById('stage');
-  const buildingItems = stage.querySelectorAll('.building-item');
-
-  let maxBHeight = 0;
-  buildingItems.forEach(item => {
-    if (item.offsetHeight > maxBHeight) {
-      maxBHeight = item.offsetHeight;
-    }
-  });
-
-  const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 100) : wrapperH;
-  stage.style.height = neededH + 'px';
-}
-
-function clampPan() {
-  const { wrapperW, wrapperH, stageW, stageH } = stageDim;
-  const scaledH = stageH * currentZoom;
-  const scaledW = stageW * currentZoom;
-
-  if (scaledH <= wrapperH) {
-    panY = wrapperH - scaledH;
-  } else {
-    const minPanY = wrapperH - scaledH; 
-    const maxPanY = 0; 
-    panY = Math.min(maxPanY, Math.max(minPanY, panY));
-  }
-
-  if (scaledW > wrapperW) {
-    const minPanX = wrapperW - scaledW;
-    panX = Math.min(0, Math.max(minPanX, panX));
-  } else {
-    panX = 0;
-  }
-}
-
-/* Aktualizacja pozycji kółek i dymków w pikselach ekranu */
-function updateUIPositions() {
-  const stage = document.getElementById('stage');
-  const buildingItems = stage.querySelectorAll('.building-item');
-
-  buildingItems.forEach(item => {
-    const id = item.dataset.id;
-    const uiEl = document.getElementById(`ui-${id}`);
-    if (!uiEl) return;
-
-    /* Wyliczenie pozycji dachu budynku na płótnie */
-    const itemLeft = item.offsetLeft + (item.offsetWidth / 2);
-    const itemTop = item.offsetTop;
-
-    /* Przeliczenie pozycji uwzględniając przesunięcie panX/panY i zoom */
-    const screenX = itemLeft * currentZoom + panX;
-    const screenY = itemTop * currentZoom + panY;
-
-    uiEl.style.left = `${screenX}px`;
-    uiEl.style.top = `${screenY}px`;
+    card.innerHTML = `
+      <img src="${item.image}" alt="${item.name}" loading="lazy">
+      <h3>${item.name} (${item.height}m)</h3>
+      ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
+    `;
+    buildingsGrid.appendChild(card);
   });
 }
 
-function applyTransform() {
-  if (!ticking) {
-    requestAnimationFrame(() => {
-      clampPan();
-      const displayZoom = Math.round(currentZoom * 100);
-      document.getElementById('zoomVal').innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
-      document.getElementById('stage').style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
-      
-      /* Przesunięcie nakładek UI bez modyfikowania ich wymiarów */
-      updateUIPositions();
-      
-      ticking = false;
-    });
-    ticking = true;
-  }
-}
+searchInput.addEventListener('input', (e) => {
+  const val = e.target.value.toLowerCase();
+  const filtered = buildingsData.filter(item => 
+    item.name.toLowerCase().includes(val) ||
+    (item.city && item.city.toLowerCase().includes(val)) ||
+    (item.country && item.country.toLowerCase().includes(val))
+  );
+  renderGrid(filtered);
+});
 
-function initInteractions() {
-  const wrapper = document.getElementById('stageWrapper');
+function addBuildingToStage(item) {
+  const bEl = document.createElement('div');
+  bEl.className = 'building-item';
   
-  const showInfoCheckbox = document.getElementById('showInfoCheckbox');
-  showInfoCheckbox.addEventListener('change', (e) => {
-    const stage = document.getElementById('stage');
-    if (e.target.checked) {
-      stage.classList.add('show-details');
-    } else {
-      stage.classList.remove('show-details');
-    }
-    setTimeout(fitToStage, 10);
-  });
+  const img = document.createElement('img');
+  img.src = item.image;
+  img.alt = item.name;
+  img.style.height = `${item.height * 2}px`;
 
-  wrapper.addEventListener('wheel', (e) => {
-    if (!isFullscreen) return;
-    e.preventDefault();
-    
-    const zoomStep = 0.12;
-    const factor = e.deltaY < 0 ? (1 + zoomStep) : (1 / (1 + zoomStep));
-    const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
-    const actualFactor = newZoom / currentZoom;
-    
-    const rect = wrapper.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  const uiContainer = document.createElement('div');
+  uiContainer.className = 'building-ui-container';
 
-    panX = mouseX - (mouseX - panX) * actualFactor;
-    panY = mouseY - (mouseY - panY) * actualFactor;
-    currentZoom = newZoom;
-    applyTransform();
-  }, { passive: false });
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'remove-btn';
+  removeBtn.innerHTML = '✕';
+  removeBtn.onclick = (e) => {
+    e.stopPropagation();
+    bEl.remove();
+  };
 
-  let isDown = false, startX, startY;
-  wrapper.addEventListener('mousedown', (e) => {
-    if (!isFullscreen || e.target.closest('.remove-btn')) return;
-    isDown = true;
-    startX = e.clientX - panX;
-    startY = e.clientY - panY;
-  });
-  window.addEventListener('mouseup', () => isDown = false);
-  wrapper.addEventListener('mousemove', (e) => {
-    if (!isDown || !isFullscreen) return;
-    panX = e.clientX - startX;
-    panY = e.clientY - startY;
-    applyTransform();
-  });
-
-  let lastTouchDist = 0;
-  wrapper.addEventListener('touchstart', (e) => {
-    if (!isFullscreen) return;
-    
-    if (e.touches.length === 1) {
-      isDown = true;
-      startX = e.touches[0].clientX - panX;
-      startY = e.touches[0].clientY - panY;
-    } else if (e.touches.length === 2) {
-      isDown = false;
-      lastTouchDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-    }
-  }, { passive: true });
-
-  wrapper.addEventListener('touchmove', (e) => {
-    if (!isFullscreen) return;
-    const rect = wrapper.getBoundingClientRect();
-
-    if (e.touches.length === 1 && isDown) {
-      panX = e.touches[0].clientX - startX;
-      panY = e.touches[0].clientY - startY;
-      applyTransform();
-    } else if (e.touches.length === 2 && lastTouchDist > 0) {
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      if (currentDist === 0) return;
-
-      const factor = currentDist / lastTouchDist;
-      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
-      const actualFactor = newZoom / currentZoom;
-
-      const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-
-      panX = currentMidX - (currentMidX - panX) * actualFactor;
-      panY = currentMidY - (currentMidY - panY) * actualFactor;
-
-      currentZoom = newZoom;
-      lastTouchDist = currentDist;
-      applyTransform();
-    }
-  }, { passive: true });
-
-  wrapper.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) {
-      lastTouchDist = 0;
-    }
-    if (e.touches.length === 1) {
-      isDown = true;
-      startX = e.touches[0].clientX - panX;
-      startY = e.touches[0].clientY - panY;
-    } else {
-      isDown = false;
-    }
-  });
-
-  window.addEventListener('resize', () => fitToStage());
-}
-
-function clearStage() {
-  document.getElementById('stage').innerHTML = '';
-  document.getElementById('uiOverlay').innerHTML = '';
-  fitToStage();
-}
-
-function removeBuilding(id) {
-  const bEl = document.querySelector(`.building-item[data-id="${id}"]`);
-  const uiEl = document.getElementById(`ui-${id}`);
-  if (bEl) bEl.remove();
-  if (uiEl) uiEl.remove();
-  fitToStage();
-}
-
-function fitToStage() {
-  updateStageHeight();
-  updateDimensionsCache();
-
-  const stage = document.getElementById('stage');
-  const buildingItems = stage.querySelectorAll('.building-item');
+  const info = document.createElement('div');
+  info.className = 'building-info';
   
-  if (buildingItems.length === 0) {
-    currentZoom = 1;
-    panX = 0;
-    panY = 0;
-    applyTransform();
-    return;
-  }
-
-  const scaleX = stageDim.wrapperW / stageDim.stageW;
-  const scaleY = stageDim.wrapperH / stageDim.stageH;
-
-  let newZoom = Math.min(scaleX, scaleY, 1);
-  if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
-    newZoom = 1;
-  }
-
-  currentZoom = newZoom;
-  panX = 0;
-  panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
-  if (isNaN(panY)) panY = 0;
-  applyTransform();
-}
-
-function addToStage(building) {
-  const stage = document.getElementById('stage');
-  const uiOverlay = document.getElementById('uiOverlay');
-  
-  const id = 'b-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
-
-  /* Element budynku w płótnie */
-  const item = document.createElement('div');
-  item.className = 'building-item';
-  item.dataset.id = id;
-  item.innerHTML = `<img src="${building.image_2d}" alt="${building.name}">`;
-
-  /* Element UI w osobnej warstwie (stały rozmiar) */
-  const built = building.built || 'N/A';
-  const h_m = building.height_m || 'N/A';
-  const h_ft = building.height_ft || 'N/A';
-
-  const uiEl = document.createElement('div');
-  uiEl.className = 'building-ui';
-  uiEl.id = `ui-${id}`;
-  uiEl.innerHTML = `
-    <button class="remove-btn" onclick="removeBuilding('${id}')">&times;</button>
-    <div class="building-info" style="margin: 0; text-align: center;">
-      <strong>${building.name}</strong>
-      <div class="extra-info">
-        Built: ${built}<br>
-        Height: ${h_m}m / ${h_ft}ft
-      </div>
+  const locationText = [item.city, item.country].filter(Boolean).join(', ');
+  info.innerHTML = `
+    <div>${item.name} (${item.height}m)</div>
+    <div class="extra-info">
+      ${item.year ? `<div>Built: ${item.year}</div>` : ''}
+      ${locationText ? `<div>${locationText}</div>` : ''}
     </div>
   `;
 
-  stage.appendChild(item);
-  uiOverlay.appendChild(uiEl);
+  uiContainer.appendChild(removeBtn);
+  uiContainer.appendChild(info);
 
-  const img = item.querySelector('img');
-  img.onload = () => fitToStage();
+  bEl.appendChild(uiContainer);
+  bEl.appendChild(img);
   
-  fitToStage();
+  stage.appendChild(bEl);
 }
 
-function renderGrid(data) {
-  const grid = document.getElementById('buildingsGrid');
-  grid.innerHTML = '';
-  data.forEach(b => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.onclick = () => addToStage(b);
-
-    const city = b.city || '';
-    const country = b.country || '';
-    const locationText = [city, country].filter(Boolean).join(', ');
-
-    card.innerHTML = `
-      <img src="${b.thumbnail}" alt="${b.name}">
-      <h3>${b.name}</h3>
-      ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
-    `;
-    grid.appendChild(card);
-  });
+function clearStage() {
+  stage.innerHTML = '';
+  resetTransform();
 }
 
-function setupFilters() {
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', filterData);
+function updateTransform() {
+  stage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomLevel})`;
+  stageWrapper.style.setProperty('--zoom-level', zoomLevel);
+  zoomVal.innerText = `${Math.round(zoomLevel * 100)}%`;
+}
+
+function resetTransform() {
+  zoomLevel = 1;
+  translateX = 0;
+  translateY = 0;
+  updateTransform();
+}
+
+stageWrapper.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.building-ui-container') || e.target.closest('.close-fullscreen-btn')) return;
+  isPanning = true;
+  startX = e.clientX - translateX;
+  startY = e.clientY - translateY;
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  translateX = e.clientX - startX;
+  translateY = e.clientY - startY;
+  updateTransform();
+});
+
+window.addEventListener('mouseup', () => { isPanning = false; });
+
+stageWrapper.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const zoomFactor = 1.1;
+  if (e.deltaY < 0) {
+    zoomLevel = Math.min(zoomLevel * zoomFactor, 5);
+  } else {
+    zoomLevel = Math.max(zoomLevel / zoomFactor, 0.2);
+  }
+  updateTransform();
+}, { passive: false });
+
+showInfoCheckbox.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    stage.classList.add('show-details');
+  } else {
+    stage.classList.remove('show-details');
+  }
+});
+
+function toggleFullscreen() {
+  stageWrapper.classList.toggle('fullscreen');
+  document.body.classList.toggle('no-scroll');
+  const btn = document.getElementById('toggleFsBtn');
+  if (stageWrapper.classList.contains('fullscreen')) {
+    btn.innerText = 'Exit Canvas';
+  } else {
+    btn.innerText = 'Open Interactive Canvas';
   }
 }
-
-function filterData() {
-  const search = document.getElementById('searchInput').value.toLowerCase();
-
-  const filtered = buildingsData.filter(b => {
-    const name = (b.name || '').toLowerCase();
-    const city = (b.city || '').toLowerCase();
-    const country = (b.country || '').toLowerCase();
-
-    return name.includes(search) || city.includes(search) || country.includes(search);
-  });
-
-  renderGrid(filtered);
-}
-
-loadData();
