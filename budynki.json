@@ -1,0 +1,145 @@
+[
+  {
+    "id": "cheops-pyramid",
+    "name": "Great Pyramid of Giza",
+    "country": "Egypt",
+    "city": "Giza",
+    "category": "Ancient Monuments",
+    "height_m": 138,
+    "year_built": -2560,
+    "thumbnail": "Mini/cheops-pyramid.mini.webp",
+    "image_2d": "Buildings2D/cheops-pyramid.webp"
+  },
+  {
+    "id": "chrysler-building",
+    "name": "Chrysler Building",
+    "country": "United States",
+    "city": "New York City",
+    "category": "Skyscrapers",
+    "height_m": 319,
+    "year_built": 1930,
+    "thumbnail": "Mini/Chrysler-building.mini.webp",
+    "image_2d": "Buildings2D/Chrysler-building.webp"
+  },
+  {
+    "id": "colosseum",
+    "name": "Colosseum",
+    "country": "Italy",
+    "city": "Rome",
+    "category": "Ancient Monuments",
+    "height_m": 48,
+    "year_built": 80,
+    "thumbnail": "Mini/Colloseum.mini.webp",
+    "image_2d": "Buildings2D/Colloseum.webp"
+  },
+  {
+    "id": "eiffel-tower",
+    "name": "Eiffel Tower",
+    "country": "France",
+    "city": "Paris",
+    "category": "Towers & Monuments",
+    "height_m": 300,
+    "year_built": 1889,
+    "thumbnail": "Mini/eiffel-tower.mini.webp",
+    "image_2d": "Buildings2D/eiffel-tower.webp"
+  },
+  {
+    "id": "empire-state-building",
+    "name": "Empire State Building",
+    "country": "United States",
+    "city": "New York City",
+    "category": "Skyscrapers",
+    "height_m": 443,
+    "year_built": 1931,
+    "thumbnail": "Mini/empire-state-building.mini.webp",
+    "image_2d": "Buildings2D/empire-state-building.webp"
+  },
+  {
+    "id": "moscow-state-university",
+    "name": "Main Building of Moscow State University",
+    "country": "Russia",
+    "city": "Moscow",
+    "category": "Skyscrapers",
+    "height_m": 240,
+    "year_built": 1953,
+    "thumbnail": "Mini/moscow-university.mini.webp",
+    "image_2d": "Buildings2D/moscow-university.webp"
+  },
+  {
+    "id": "notre-dame",
+    "name": "Notre-Dame Cathedral",
+    "country": "France",
+    "city": "Paris",
+    "category": "Cathedrals & Churches",
+    "height_m": 69,
+    "year_built": 1345,
+    "thumbnail": "Mini/Notredame.mini.webp",
+    "image_2d": "Buildings2D/notredame.sideview.webp"
+  },
+  {
+    "id": "pkin",
+    "name": "Palace of Culture and Science",
+    "country": "Poland",
+    "city": "Warsaw",
+    "category": "Skyscrapers",
+    "height_m": 237,
+    "year_built": 1955,
+    "thumbnail": "Mini/PKiN.mini.webp",
+    "image_2d": "Buildings2D/PKiN.webp"
+  },
+  {
+    "id": "statue-of-liberty",
+    "name": "Statue of Liberty",
+    "country": "United States",
+    "city": "New York City",
+    "category": "Towers & Monuments",
+    "height_m": 93,
+    "year_built": 1886,
+    "thumbnail": "Mini/statue-of-liberty.mini.webp",
+    "image_2d": "Buildings2D/statue-of-liberty.webp"
+  },
+  {
+    "id": "the-shard",
+    "name": "The Shard",
+    "country": "United Kingdom",
+    "city": "London",
+    "category": "Skyscrapers",
+    "height_m": 310,
+    "year_built": 2012,
+    "thumbnail": "Mini/the-shard.mini.webp",
+    "image_2d": "Buildings2D/the-shard.webp"
+  },
+  {
+    "id": "white-house",
+    "name": "The White House",
+    "country": "United States",
+    "city": "Washington, D.C.",
+    "category": "Government Buildings",
+    "height_m": 21,
+    "year_built": 1800,
+    "thumbnail": "Mini/white-house.mini.webp",
+    "image_2d": "Buildings2D/white-house.webp"
+  },
+  {
+    "id": "us-bank-tower",
+    "name": "U.S. Bank Tower",
+    "country": "United States",
+    "city": "Los Angeles",
+    "category": "Skyscrapers",
+    "height_m": 310,
+    "year_built": 1989,
+    "thumbnail": "Mini/us-bank-tower.mini.webp",
+    "image_2d": "Buildings2D/us-bank-tower.webp"
+  },
+  {
+    "id": "burj-khalifa",
+    "name": "Burj Khalifa",
+    "country": "United Arab Emirates",
+    "city": "Dubai",
+    "category": "Skyscrapers",
+    "height_m": 828,
+    "year_built": 2010,
+    "thumbnail": "Mini/burj-khalifa.mini.webp",
+    "image_2d": "Buildings2D/burj-khalifa.webp"
+  }
+]
