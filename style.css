@@ -39,6 +39,7 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
   width: 100%; height: 450px; border: 2px solid #bbb;
   border-radius: 8px; background: #ffffff; overflow: hidden;
   position: relative; user-select: none; touch-action: pan-y;
+  --zoom-level: 1; /* Zmienna przekazywana z JS */
 }
 
 /* TRYB PEŁNOEKRANOWY */
@@ -72,54 +73,44 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 }
 .building-item img { display: block; height: auto; width: auto; pointer-events: none; margin: 0; padding: 0; }
 
-/* WARSTWA INTERFEJSU OVERLAY (NIE SKALOWANA) */
-#uiOverlay {
+/* PRZYCISK I DYMEK — ODWROTNE SKALOWANIE */
+.building-ui-container {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.building-ui {
-  position: absolute;
-  pointer-events: auto;
-  transform: translate(-50%, -100%);
+  top: -10px;
+  left: 50%;
+  /* Kluczowa linia: niweluje zoom rodzica i utrzymuje stały rozmiar */
+  transform: translate(-50%, -100%) scale(calc(1 / var(--zoom-level)));
+  transform-origin: bottom center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-top: -10px;
+  gap: 5px;
+  z-index: 20;
+  pointer-events: auto;
 }
 
-/* PRZYCISK X O STAŁYM ROZMIARZE */
 .remove-btn {
   background: #ff4d4d; 
   color: white; 
   border: none; 
   border-radius: 50%;
-  width: 26px; 
-  height: 26px; 
-  font-size: 16px; 
+  width: 24px; 
+  height: 24px; 
+  font-size: 14px; 
   line-height: 24px;
   text-align: center;
   padding: 0;
   cursor: pointer; 
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.remove-btn:hover {
-  background: #cc0000;
-}
+.remove-btn:hover { background: #cc0000; }
 
-/* DYMKI INFORMACYJNE O STAŁYM ROZMIARZE */
 .building-info { 
-  font-size: 15px; 
+  font-size: 14px; 
   font-weight: bold;
   text-align: center; 
   background: rgba(255,255,255,0.95); 
-  padding: 6px 12px; 
+  padding: 4px 8px; 
   border: 1px solid #ccc; 
   border-radius: 6px; 
   white-space: nowrap;
@@ -128,36 +119,25 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 
 .extra-info {
   display: none;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: normal;
   color: #444;
-  margin-top: 4px;
+  margin-top: 3px;
   border-top: 1px solid #eee;
-  padding-top: 4px;
+  padding-top: 3px;
 }
 
-#stage.show-details ~ #uiOverlay .extra-info { display: block; }
+#stage.show-details .extra-info { display: block; }
 
-.card-location {
-  margin: 4px 0 0 0;
-  font-size: 11px;
-  color: #666;
-}
+.card-location { margin: 4px 0 0 0; font-size: 11px; color: #666; }
 
 @media (max-width: 480px) {
   body { margin: 10px; }
   .grid {
-    display: grid;
-    grid-template-columns: none;
-    grid-template-rows: repeat(2, 1fr);
-    grid-auto-flow: column;
-    height: auto;
-    max-height: 420px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 10px;
-    padding: 10px;
-    box-sizing: border-box;
+    display: grid; grid-template-columns: none;
+    grid-template-rows: repeat(2, 1fr); grid-auto-flow: column;
+    height: auto; max-height: 420px; overflow-x: auto; overflow-y: hidden;
+    gap: 10px; padding: 10px; box-sizing: border-box;
   }
   .card { width: 150px; box-sizing: border-box; }
 }
