@@ -60,32 +60,45 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 #stage { 
   display: flex; align-items: flex-end; justify-content: flex-start; 
   gap: 30px; 
-  padding: 40px 30px 25px 30px; 
+  padding: 120px 30px 25px 30px; 
   box-sizing: border-box;
   min-width: 100%; width: max-content;
   background: linear-gradient(to bottom, transparent calc(100% - 25px), #4CAF50 calc(100% - 25px), #2e7d32 100%);
   transform-origin: 0 0; position: absolute; top: 0; left: 0;
+  overflow: visible;
 }
 
 .building-item { 
   display: flex; flex-direction: column; align-items: center; 
   flex-shrink: 0; position: relative; margin: 0; padding: 0;
+  overflow: visible;
 }
-.building-item img { display: block; height: auto; width: auto; pointer-events: none; margin: 0; padding: 0; }
 
-/* PRZYCISK I DYMEK — ODWROTNE SKALOWANIE */
+.building-item img { 
+  display: block; 
+  width: auto; 
+  max-width: none; 
+  pointer-events: none; 
+  margin: 0; 
+  padding: 0;
+  vertical-align: bottom;
+}
+
+/* KONTENER UI Z ODWROTNYM SKALOWANIEM */
 .building-ui-container {
   position: absolute;
-  top: -10px;
+  bottom: 100%;
   left: 50%;
-  transform: translate(-50%, -100%) scale(calc(1 / var(--zoom-level)));
+  margin-bottom: 15px;
+  transform: translateX(-50%) scale(calc(1 / var(--zoom-level, 1)));
   transform-origin: bottom center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  z-index: 20;
+  gap: 6px;
+  z-index: 50;
   pointer-events: auto;
+  white-space: nowrap;
 }
 
 .remove-btn {
@@ -93,14 +106,15 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
   color: white; 
   border: none; 
   border-radius: 50%;
-  width: 24px; 
-  height: 24px; 
+  width: 26px; 
+  height: 26px; 
   font-size: 14px; 
-  line-height: 24px;
+  line-height: 26px;
   text-align: center;
   padding: 0;
   cursor: pointer; 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  display: block;
 }
 .remove-btn:hover { background: #cc0000; }
 
@@ -113,7 +127,7 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
   border: 1px solid #ccc; 
   border-radius: 6px; 
   white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
 
 .extra-info {
