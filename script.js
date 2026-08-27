@@ -56,8 +56,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  /* Zwiększono zapas nad budynkiem ze 100px do 250px */
-  const neededH = maxBHeight > 0 ? (maxBHeight + 250) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 100) : wrapperH;
   stage.style.height = neededH + 'px';
 }
 
@@ -82,6 +81,29 @@ function clampPan() {
   }
 }
 
+/* Aktualizacja pozycji kółek i dymków w pikselach ekranu */
+function updateUIPositions() {
+  const stage = document.getElementById('stage');
+  const buildingItems = stage.querySelectorAll('.building-item');
+
+  buildingItems.forEach(item => {
+    const id = item.dataset.id;
+    const uiEl = document.getElementById(`ui-${id}`);
+    if (!uiEl) return;
+
+    /* Wyliczenie pozycji dachu budynku na płótnie */
+    const itemLeft = item.offsetLeft + (item.offsetWidth / 2);
+    const itemTop = item.offsetTop;
+
+    /* Przeliczenie pozycji uwzględniając przesunięcie panX/panY i zoom */
+    const screenX = itemLeft * currentZoom + panX;
+    const screenY = itemTop * currentZoom + panY;
+
+    uiEl.style.left = `${screenX}px`;
+    uiEl.style.top = `${screenY}px`;
+  });
+}
+
 function applyTransform() {
   if (!ticking) {
     requestAnimationFrame(() => {
@@ -89,6 +111,10 @@ function applyTransform() {
       const displayZoom = Math.round(currentZoom * 100);
       document.getElementById('zoomVal').innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
       document.getElementById('stage').style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
+      
+      /* Przesunięcie nakładek UI bez modyfikowania ich wymiarów */
+      updateUIPositions();
+      
       ticking = false;
     });
     ticking = true;
@@ -208,8 +234,16 @@ function initInteractions() {
 }
 
 function clearStage() {
-  const stage = document.getElementById('stage');
-  stage.innerHTML = '';
+  document.getElementById('stage').innerHTML = '';
+  document.getElementById('uiOverlay').innerHTML = '';
+  fitToStage();
+}
+
+function removeBuilding(id) {
+  const bEl = document.querySelector(`.building-item[data-id="${id}"]`);
+  const uiEl = document.getElementById(`ui-${id}`);
+  if (bEl) bEl.remove();
+  if (uiEl) uiEl.remove();
   fitToStage();
 }
 
@@ -245,30 +279,41 @@ function fitToStage() {
 
 function addToStage(building) {
   const stage = document.getElementById('stage');
+  const uiOverlay = document.getElementById('uiOverlay');
+  
+  const id = 'b-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+
+  /* Element budynku w płótnie */
   const item = document.createElement('div');
   item.className = 'building-item';
-  
+  item.dataset.id = id;
+  item.innerHTML = `<img src="${building.image_2d}" alt="${building.name}">`;
+
+  /* Element UI w osobnej warstwie (stały rozmiar) */
   const built = building.built || 'N/A';
   const h_m = building.height_m || 'N/A';
   const h_ft = building.height_ft || 'N/A';
 
-  /* Zmieniono kolejność elementów: Dymek u góry, kółko zamknij poniżej niego */
-  item.innerHTML = `
-    <div class="building-info">
+  const uiEl = document.createElement('div');
+  uiEl.className = 'building-ui';
+  uiEl.id = `ui-${id}`;
+  uiEl.innerHTML = `
+    <button class="remove-btn" onclick="removeBuilding('${id}')">&times;</button>
+    <div class="building-info" style="margin: 0; text-align: center;">
       <strong>${building.name}</strong>
       <div class="extra-info">
         Built: ${built}<br>
         Height: ${h_m}m / ${h_ft}ft
       </div>
     </div>
-    <button class="remove-btn" onclick="this.parentElement.remove(); fitToStage();">&times;</button>
-    <img src="${building.image_2d}" alt="${building.name}">
   `;
-  
+
+  stage.appendChild(item);
+  uiOverlay.appendChild(uiEl);
+
   const img = item.querySelector('img');
   img.onload = () => fitToStage();
   
-  stage.appendChild(item);
   fitToStage();
 }
 
