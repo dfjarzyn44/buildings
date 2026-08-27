@@ -58,7 +58,9 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 /* PŁÓTNO */
 #stage { 
   display: flex; align-items: flex-end; justify-content: flex-start; 
-  gap: 30px; padding: 20px 30px 25px 30px; box-sizing: border-box;
+  gap: 30px; 
+  padding: 120px 30px 25px 30px; /* Zwiększony górny zapas wolnego miejsca */
+  box-sizing: border-box;
   min-width: 100%; width: max-content;
   background: linear-gradient(to bottom, transparent calc(100% - 25px), #4CAF50 calc(100% - 25px), #2e7d32 100%);
   transform-origin: 0 0; position: absolute; top: 0; left: 0;
@@ -70,24 +72,50 @@ input, select { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-r
 }
 .building-item img { display: block; height: auto; width: auto; pointer-events: none; margin: 0; padding: 0; }
 
+/* STAŁE I CZYTELNE KÓŁKO ZAMKNIĘCIA */
 .remove-btn {
-  position: absolute; top: -55px; background: #ff4d4d; color: white; border: none; border-radius: 50%;
-  width: 48px; height: 48px; font-size: 26px; cursor: pointer; z-index: 10;
+  position: absolute; 
+  top: -35px; 
+  background: #ff4d4d; 
+  color: white; 
+  border: none; 
+  border-radius: 50%;
+  width: 28px; 
+  height: 28px; 
+  font-size: 16px; 
+  line-height: 28px;
+  text-align: center;
+  padding: 0;
+  cursor: pointer; 
+  z-index: 10;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.remove-btn:hover {
+  background: #cc0000;
 }
 
+/* WIĘKSZE DYMKI INFORMACYJNE */
 .building-info { 
-  margin-bottom: 6px; font-size: 12px; text-align: center; 
-  background: rgba(255,255,255,0.95); padding: 3px 6px; 
-  border: 1px solid #ccc; border-radius: 4px; white-space: nowrap;
+  margin-bottom: 8px; 
+  font-size: 14px; 
+  font-weight: bold;
+  text-align: center; 
+  background: rgba(255,255,255,0.95); 
+  padding: 6px 10px; 
+  border: 1px solid #ccc; 
+  border-radius: 6px; 
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .extra-info {
   display: none;
-  font-size: 11px;
-  color: #555;
-  margin-top: 4px;
-  border-top: 1px solid #ddd;
-  padding-top: 4px;
+  font-size: 12px;
+  font-weight: normal;
+  color: #444;
+  margin-top: 5px;
+  border-top: 1px solid #eee;
+  padding-top: 5px;
 }
 
 /* Gdy dodamy klasę 'show-details' na #stage, pokazujemy dodatkowe info */
