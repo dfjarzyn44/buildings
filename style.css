@@ -1,389 +1,755 @@
-body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
-  background-color: #f4f4f9;
-  color: #333;
+let buildingsData = [];
+let currentZoom = 1;
+let panX = 0;
+let panY = 0;
+
+let isFullscreen = false;
+
+let stageDim = {
+  wrapperW: 0,
+  wrapperH: 0,
+  stageW: 0,
+  stageH: 0
+};
+
+let ticking = false;
+
+
+async function loadData() {
+  try {
+    const response = await fetch('budynki.json');
+
+    buildingsData = await response.json();
+
+    renderGrid(buildingsData);
+    setupFilters();
+    initInteractions();
+
+  } catch (e) {
+    console.error("Błąd ładowania JSON:", e);
+  }
 }
 
-body.no-scroll {
-  overflow: hidden;
+
+function updateDimensionsCache() {
+  const wrapper = document.getElementById('stageWrapper');
+  const stage = document.getElementById('stage');
+
+  stageDim.wrapperW = wrapper.clientWidth || 1;
+  stageDim.wrapperH = wrapper.clientHeight || 1;
+  stageDim.stageW = stage.scrollWidth || 1;
+  stageDim.stageH = stage.offsetHeight || 1;
 }
 
-h1 {
-  text-align: center;
-  font-size: 20px;
+
+function toggleFullscreen() {
+  const wrapper = document.getElementById('stageWrapper');
+  const btn = document.getElementById('toggleFsBtn');
+
+  isFullscreen = !isFullscreen;
+
+  if (isFullscreen) {
+    wrapper.classList.add('fullscreen');
+    document.body.classList.add('no-scroll');
+
+    btn.innerText = "Exit Canvas";
+
+  } else {
+    wrapper.classList.remove('fullscreen');
+    document.body.classList.remove('no-scroll');
+
+    btn.innerText = "Open Interactive Canvas";
+  }
+
+  fitToStage();
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-  justify-content: center;
+
+function updateStageHeight() {
+  const wrapper = document.getElementById('stageWrapper');
+  const stage = document.getElementById('stage');
+  const buildingItems = stage.querySelectorAll('.building-item');
+
+  let maxBHeight = 0;
+
+  buildingItems.forEach(item => {
+    if (item.offsetHeight > maxBHeight) {
+      maxBHeight = item.offsetHeight;
+    }
+  });
+
+  const wrapperH = wrapper.clientHeight;
+
+  /*
+    Było:
+    maxBHeight + 100
+
+    Teraz:
+    maxBHeight + 300
+
+    Czyli 3 razy więcej przestrzeni nad najwyższym budynkiem.
+  */
+  const neededH =
+    maxBHeight > 0
+      ? (maxBHeight + 300)
+      : wrapperH;
+
+  stage.style.height = neededH + 'px';
 }
 
-input,
-select {
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-}
 
-#searchInput {
-  width: 280px;
-}
+function clampPan() {
+  const {
+    wrapperW,
+    wrapperH,
+    stageW,
+    stageH
+  } = stageDim;
 
-.grid {
-  display: grid;
-  grid-template-columns:
-    repeat(auto-fill, minmax(180px, 1fr));
+  const scaledH = stageH * currentZoom;
+  const scaledW = stageW * currentZoom;
 
-  gap: 15px;
-  margin-bottom: 25px;
-  height: 200px;
-  overflow-y: auto;
 
-  border: 1px solid #ddd;
-  padding: 10px;
-  background: #fff;
-  border-radius: 8px;
-}
+  if (scaledH <= wrapperH) {
+    panY = wrapperH - scaledH;
 
-.card {
-  background: white;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  padding: 10px;
-  text-align: center;
-  cursor: pointer;
-}
+  } else {
+    const minPanY = wrapperH - scaledH;
+    const maxPanY = 0;
 
-.card:hover {
-  border-color: #007bff;
-}
+    panY = Math.min(
+      maxPanY,
+      Math.max(minPanY, panY)
+    );
+  }
 
-.card img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  display: block;
-  border-radius: 5px;
-  background-color: transparent;
-}
 
-.card h3 {
-  margin: 8px 0 0 0;
-  font-size: 13px;
-}
+  if (scaledW > wrapperW) {
+    const minPanX = wrapperW - scaledW;
 
-.stage-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.zoom-controls {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  background: #fff;
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-.info-toggle {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  border-right: 1px solid #ccc;
-  padding-right: 10px;
-}
-
-.btn-action {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 5px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.btn-action:hover {
-  background: #0056b3;
-}
-
-/* OKNO PODGLĄDU */
-
-.stage-wrapper {
-  width: 100%;
-  height: 450px;
-  border: 2px solid #bbb;
-  border-radius: 8px;
-  background: #ffffff;
-  overflow: hidden;
-  position: relative;
-  user-select: none;
-  touch-action: pan-y;
-}
-
-/* TRYB PEŁNOEKRANOWY */
-
-.stage-wrapper.fullscreen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-
-  z-index: 9999;
-
-  border: none;
-  border-radius: 0;
-
-  touch-action: none;
-  cursor: grab;
-}
-
-.stage-wrapper.fullscreen:active {
-  cursor: grabbing;
-}
-
-.close-fullscreen-btn {
-  display: none;
-
-  position: absolute;
-  top: 15px;
-  right: 15px;
-
-  z-index: 10000;
-
-  background: #ff4d4d;
-  color: white;
-
-  border: none;
-
-  padding: 10px 18px;
-
-  border-radius: 6px;
-
-  font-weight: bold;
-  font-size: 16px;
-
-  cursor: pointer;
-}
-
-.stage-wrapper.fullscreen
-.close-fullscreen-btn {
-  display: block;
-}
-
-/* PŁÓTNO */
-
-#stage {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-
-  gap: 30px;
-
-  padding:
-    20px
-    30px
-    25px
-    30px;
-
-  box-sizing: border-box;
-
-  min-width: 100%;
-  width: max-content;
-
-  background:
-    linear-gradient(
-      to bottom,
-      transparent calc(100% - 25px),
-      #4CAF50 calc(100% - 25px),
-      #2e7d32 100%
+    panX = Math.min(
+      0,
+      Math.max(minPanX, panX)
     );
 
-  transform-origin: 0 0;
-
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-/* BUDYNEK */
-
-.building-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-
-  flex-shrink: 0;
-
-  position: relative;
-
-  margin: 0;
-  padding: 0;
-}
-
-.building-item img {
-  display: block;
-
-  height: auto;
-  width: auto;
-
-  pointer-events: none;
-
-  margin: 0;
-  padding: 0;
-}
-
-/* =========================================
-   UI BUDYNKU
-   Ten kontener dostaje odwrotne skalowanie
-========================================= */
-
-.building-ui {
-  position: absolute;
-
-  top: 0;
-  left: 50%;
-
-  transform-origin: top center;
-
-  z-index: 20;
-
-  pointer-events: none;
-}
-
-/* PRZYCISK USUWANIA */
-
-.remove-btn {
-  position: absolute;
-
-  top: -55px;
-  left: 50%;
-
-  transform: translateX(-50%);
-
-  width: 48px;
-  height: 48px;
-
-  font-size: 26px;
-
-  background: #ff4d4d;
-  color: white;
-
-  border: none;
-  border-radius: 50%;
-
-  cursor: pointer;
-
-  z-index: 10;
-
-  pointer-events: auto;
-}
-
-/* INFORMACJE */
-
-.building-info {
-  position: absolute;
-
-  top: -10px;
-  left: 50%;
-
-  transform: translateX(-50%);
-
-  margin-bottom: 6px;
-
-  font-size: 12px;
-  text-align: center;
-
-  background:
-    rgba(255, 255, 255, 0.95);
-
-  padding: 3px 6px;
-
-  border: 1px solid #ccc;
-  border-radius: 4px;
-
-  white-space: nowrap;
-
-  pointer-events: auto;
-}
-
-.extra-info {
-  display: none;
-
-  font-size: 11px;
-  color: #555;
-
-  margin-top: 4px;
-
-  border-top:
-    1px solid #ddd;
-
-  padding-top: 4px;
-}
-
-#stage.show-details
-.extra-info {
-  display: block;
-}
-
-/* LOKALIZACJA W KAFELKACH */
-
-.card-location {
-  margin: 4px 0 0 0;
-
-  font-size: 11px;
-
-  color: #666;
-}
-
-/* MOBILE */
-
-@media (max-width: 480px) {
-
-  body {
-    margin: 10px;
-  }
-
-  .grid {
-    display: grid;
-
-    grid-template-columns: none;
-
-    grid-template-rows:
-      repeat(2, 1fr);
-
-    grid-auto-flow: column;
-
-    height: auto;
-    max-height: 420px;
-
-    overflow-x: auto;
-    overflow-y: hidden;
-
-    gap: 10px;
-    padding: 10px;
-
-    box-sizing: border-box;
-  }
-
-  .card {
-    width: 150px;
-    box-sizing: border-box;
+  } else {
+    panX = 0;
   }
 }
+
+
+function applyTransform() {
+  if (!ticking) {
+
+    requestAnimationFrame(() => {
+
+      clampPan();
+
+      const displayZoom = Math.round(currentZoom * 100);
+
+      document.getElementById('zoomVal').innerText =
+        (isNaN(displayZoom) ? 100 : displayZoom) + '%';
+
+      document.getElementById('stage').style.transform =
+        `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
+
+      ticking = false;
+    });
+
+    ticking = true;
+  }
+}
+
+
+function initInteractions() {
+  const wrapper = document.getElementById('stageWrapper');
+
+
+  const showInfoCheckbox =
+    document.getElementById('showInfoCheckbox');
+
+
+  showInfoCheckbox.addEventListener('change', (e) => {
+
+    const stage =
+      document.getElementById('stage');
+
+
+    if (e.target.checked) {
+      stage.classList.add('show-details');
+
+    } else {
+      stage.classList.remove('show-details');
+    }
+
+
+    setTimeout(fitToStage, 10);
+  });
+
+
+  wrapper.addEventListener(
+    'wheel',
+    (e) => {
+
+      if (!isFullscreen) return;
+
+      e.preventDefault();
+
+
+      const zoomStep = 0.12;
+
+      const factor =
+        e.deltaY < 0
+          ? (1 + zoomStep)
+          : (1 / (1 + zoomStep));
+
+
+      const newZoom =
+        Math.min(
+          Math.max(
+            currentZoom * factor,
+            0.05
+          ),
+          5
+        );
+
+
+      const actualFactor =
+        newZoom / currentZoom;
+
+
+      const rect =
+        wrapper.getBoundingClientRect();
+
+
+      const mouseX =
+        e.clientX - rect.left;
+
+
+      const mouseY =
+        e.clientY - rect.top;
+
+
+      panX =
+        mouseX -
+        (mouseX - panX) * actualFactor;
+
+
+      panY =
+        mouseY -
+        (mouseY - panY) * actualFactor;
+
+
+      currentZoom = newZoom;
+
+      applyTransform();
+    },
+    { passive: false }
+  );
+
+
+  let isDown = false;
+  let startX;
+  let startY;
+
+
+  wrapper.addEventListener(
+    'mousedown',
+    (e) => {
+
+      if (
+        !isFullscreen ||
+        e.target.closest('.remove-btn')
+      ) return;
+
+
+      isDown = true;
+
+      startX =
+        e.clientX - panX;
+
+      startY =
+        e.clientY - panY;
+    }
+  );
+
+
+  window.addEventListener(
+    'mouseup',
+    () => {
+      isDown = false;
+    }
+  );
+
+
+  wrapper.addEventListener(
+    'mousemove',
+    (e) => {
+
+      if (
+        !isDown ||
+        !isFullscreen
+      ) return;
+
+
+      panX =
+        e.clientX - startX;
+
+      panY =
+        e.clientY - startY;
+
+
+      applyTransform();
+    }
+  );
+
+
+  let lastTouchDist = 0;
+
+
+  wrapper.addEventListener(
+    'touchstart',
+    (e) => {
+
+      if (!isFullscreen) return;
+
+
+      if (e.touches.length === 1) {
+
+        isDown = true;
+
+        startX =
+          e.touches[0].clientX - panX;
+
+        startY =
+          e.touches[0].clientY - panY;
+
+
+      } else if (e.touches.length === 2) {
+
+        isDown = false;
+
+        lastTouchDist =
+          Math.hypot(
+            e.touches[0].clientX -
+            e.touches[1].clientX,
+
+            e.touches[0].clientY -
+            e.touches[1].clientY
+          );
+      }
+    },
+    { passive: true }
+  );
+
+
+  wrapper.addEventListener(
+    'touchmove',
+    (e) => {
+
+      if (!isFullscreen) return;
+
+
+      const rect =
+        wrapper.getBoundingClientRect();
+
+
+      if (
+        e.touches.length === 1 &&
+        isDown
+      ) {
+
+        panX =
+          e.touches[0].clientX -
+          startX;
+
+        panY =
+          e.touches[0].clientY -
+          startY;
+
+
+        applyTransform();
+
+
+      } else if (
+        e.touches.length === 2 &&
+        lastTouchDist > 0
+      ) {
+
+        const currentDist =
+          Math.hypot(
+            e.touches[0].clientX -
+            e.touches[1].clientX,
+
+            e.touches[0].clientY -
+            e.touches[1].clientY
+          );
+
+
+        if (currentDist === 0) return;
+
+
+        const factor =
+          currentDist / lastTouchDist;
+
+
+        const newZoom =
+          Math.min(
+            Math.max(
+              currentZoom * factor,
+              0.05
+            ),
+            5
+          );
+
+
+        const actualFactor =
+          newZoom / currentZoom;
+
+
+        const currentMidX =
+          (
+            e.touches[0].clientX +
+            e.touches[1].clientX
+          ) / 2 - rect.left;
+
+
+        const currentMidY =
+          (
+            e.touches[0].clientY +
+            e.touches[1].clientY
+          ) / 2 - rect.top;
+
+
+        panX =
+          currentMidX -
+          (
+            currentMidX - panX
+          ) * actualFactor;
+
+
+        panY =
+          currentMidY -
+          (
+            currentMidY - panY
+          ) * actualFactor;
+
+
+        currentZoom = newZoom;
+
+        lastTouchDist = currentDist;
+
+
+        applyTransform();
+      }
+    },
+    { passive: true }
+  );
+
+
+  wrapper.addEventListener(
+    'touchend',
+    (e) => {
+
+      if (e.touches.length < 2) {
+        lastTouchDist = 0;
+      }
+
+
+      if (e.touches.length === 1) {
+
+        isDown = true;
+
+        startX =
+          e.touches[0].clientX -
+          panX;
+
+        startY =
+          e.touches[0].clientY -
+          panY;
+
+      } else {
+
+        isDown = false;
+      }
+    }
+  );
+
+
+  window.addEventListener(
+    'resize',
+    () => fitToStage()
+  );
+}
+
+
+function clearStage() {
+
+  const stage =
+    document.getElementById('stage');
+
+  stage.innerHTML = '';
+
+  fitToStage();
+}
+
+
+function fitToStage() {
+
+  updateStageHeight();
+  updateDimensionsCache();
+
+
+  const stage =
+    document.getElementById('stage');
+
+
+  const buildingItems =
+    stage.querySelectorAll('.building-item');
+
+
+  if (buildingItems.length === 0) {
+
+    currentZoom = 1;
+
+    panX = 0;
+    panY = 0;
+
+
+    applyTransform();
+
+    return;
+  }
+
+
+  const scaleX =
+    stageDim.wrapperW /
+    stageDim.stageW;
+
+
+  const scaleY =
+    stageDim.wrapperH /
+    stageDim.stageH;
+
+
+  let newZoom =
+    Math.min(
+      scaleX,
+      scaleY,
+      1
+    );
+
+
+  if (
+    isNaN(newZoom) ||
+    !isFinite(newZoom) ||
+    newZoom <= 0
+  ) {
+
+    newZoom = 1;
+  }
+
+
+  currentZoom = newZoom;
+
+  panX = 0;
+
+
+  panY =
+    stageDim.wrapperH -
+    (
+      stageDim.stageH *
+      currentZoom
+    );
+
+
+  if (isNaN(panY)) {
+    panY = 0;
+  }
+
+
+  applyTransform();
+}
+
+
+function addToStage(building) {
+
+  const stage =
+    document.getElementById('stage');
+
+
+  const item =
+    document.createElement('div');
+
+
+  item.className =
+    'building-item';
+
+
+  const built =
+    building.built || 'N/A';
+
+
+  const h_m =
+    building.height_m || 'N/A';
+
+
+  const h_ft =
+    building.height_ft || 'N/A';
+
+
+  item.innerHTML = `
+    <button
+      class="remove-btn"
+      onclick="this.parentElement.remove(); fitToStage();"
+    >
+      &times;
+    </button>
+
+    <div class="building-info">
+      <strong>${building.name}</strong>
+
+      <div class="extra-info">
+        Built: ${built}<br>
+        Height: ${h_m}m / ${h_ft}ft
+      </div>
+    </div>
+
+    <img
+      src="${building.image_2d}"
+      alt="${building.name}"
+    >
+  `;
+
+
+  const img =
+    item.querySelector('img');
+
+
+  img.onload =
+    () => fitToStage();
+
+
+  stage.appendChild(item);
+
+  fitToStage();
+}
+
+
+function renderGrid(data) {
+
+  const grid =
+    document.getElementById('buildingsGrid');
+
+
+  grid.innerHTML = '';
+
+
+  data.forEach(b => {
+
+    const card =
+      document.createElement('div');
+
+
+    card.className = 'card';
+
+
+    card.onclick =
+      () => addToStage(b);
+
+
+    const city =
+      b.city || '';
+
+
+    const country =
+      b.country || '';
+
+
+    const locationText =
+      [city, country]
+        .filter(Boolean)
+        .join(', ');
+
+
+    card.innerHTML = `
+      <img
+        src="${b.thumbnail}"
+        alt="${b.name}"
+      >
+
+      <h3>${b.name}</h3>
+
+      ${
+        locationText
+          ? `
+            <p class="card-location">
+              ${locationText}
+            </p>
+          `
+          : ''
+      }
+    `;
+
+
+    grid.appendChild(card);
+  });
+}
+
+
+function setupFilters() {
+
+  const searchInput =
+    document.getElementById('searchInput');
+
+
+  if (searchInput) {
+
+    searchInput.addEventListener(
+      'input',
+      filterData
+    );
+  }
+}
+
+
+function filterData() {
+
+  const search =
+    document
+      .getElementById('searchInput')
+      .value
+      .toLowerCase();
+
+
+  const filtered =
+    buildingsData.filter(b => {
+
+      const name =
+        (b.name || '')
+          .toLowerCase();
+
+
+      const city =
+        (b.city || '')
+          .toLowerCase();
+
+
+      const country =
+        (b.country || '')
+          .toLowerCase();
+
+
+      return (
+        name.includes(search) ||
+        city.includes(search) ||
+        country.includes(search)
+      );
+    });
+
+
+  renderGrid(filtered);
+}
+
+
+loadData();
