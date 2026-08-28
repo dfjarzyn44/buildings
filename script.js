@@ -1,35 +1,19 @@
-let buildingsData = [];
-let currentZoom = 1;
-let panX = 0;
-let panY = 0;
-
+let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
-
-let stageDim = {
-  wrapperW: 0,
-  wrapperH: 0,
-  stageW: 0,
-  stageH: 0
-};
-
+let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
-
 
 async function loadData() {
   try {
     const response = await fetch('budynki.json');
-
     buildingsData = await response.json();
-
     renderGrid(buildingsData);
     setupFilters();
     initInteractions();
-
   } catch (e) {
     console.error("Błąd ładowania JSON:", e);
   }
 }
-
 
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
@@ -41,6 +25,20 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
+/* =========================================
+   NOWA FUNKCJA
+   Kompensuje zoom dla X-a i dymka
+========================================= */
+
+function updateBuildingUI() {
+  const uiElements = document.querySelectorAll('.building-ui');
+
+  const inverseScale = 1 / currentZoom;
+
+  uiElements.forEach(ui => {
+    ui.style.transform = `scale(${inverseScale})`;
+  });
+}
 
 function toggleFullscreen() {
   const wrapper = document.getElementById('stageWrapper');
@@ -51,19 +49,15 @@ function toggleFullscreen() {
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
     document.body.classList.add('no-scroll');
-
-    btn.innerText = "Exit Canvas";
-
+    btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
     document.body.classList.remove('no-scroll');
-
-    btn.innerText = "Open Interactive Canvas";
+    btn.innerText = " Open Interactive Canvas";
   }
 
   fitToStage();
 }
-
 
 function updateStageHeight() {
   const wrapper = document.getElementById('stageWrapper');
@@ -79,70 +73,38 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-
-  /*
-    Było:
-    maxBHeight + 100
-
-    Teraz:
-    maxBHeight + 300
-
-    Czyli 3 razy więcej przestrzeni nad najwyższym budynkiem.
-  */
-  const neededH =
-    maxBHeight > 0
-      ? (maxBHeight + 300)
-      : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 100) : wrapperH;
 
   stage.style.height = neededH + 'px';
 }
 
-
 function clampPan() {
-  const {
-    wrapperW,
-    wrapperH,
-    stageW,
-    stageH
-  } = stageDim;
+  const { wrapperW, wrapperH, stageW, stageH } = stageDim;
 
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
-
   if (scaledH <= wrapperH) {
     panY = wrapperH - scaledH;
-
   } else {
     const minPanY = wrapperH - scaledH;
     const maxPanY = 0;
 
-    panY = Math.min(
-      maxPanY,
-      Math.max(minPanY, panY)
-    );
+    panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
-
 
   if (scaledW > wrapperW) {
     const minPanX = wrapperW - scaledW;
 
-    panX = Math.min(
-      0,
-      Math.max(minPanX, panX)
-    );
-
+    panX = Math.min(0, Math.max(minPanX, panX));
   } else {
     panX = 0;
   }
 }
 
-
 function applyTransform() {
   if (!ticking) {
-
     requestAnimationFrame(() => {
-
       clampPan();
 
       const displayZoom = Math.round(currentZoom * 100);
@@ -153,6 +115,9 @@ function applyTransform() {
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
+      /* NOWE */
+      updateBuildingUI();
+
       ticking = false;
     });
 
@@ -160,551 +125,379 @@ function applyTransform() {
   }
 }
 
-
 function initInteractions() {
   const wrapper = document.getElementById('stageWrapper');
 
-
-  const showInfoCheckbox =
-    document.getElementById('showInfoCheckbox');
-
+  const showInfoCheckbox = document.getElementById('showInfoCheckbox');
 
   showInfoCheckbox.addEventListener('change', (e) => {
-
-    const stage =
-      document.getElementById('stage');
-
+    const stage = document.getElementById('stage');
 
     if (e.target.checked) {
       stage.classList.add('show-details');
-
     } else {
       stage.classList.remove('show-details');
     }
 
-
     setTimeout(fitToStage, 10);
   });
 
+  wrapper.addEventListener('wheel', (e) => {
+    if (!isFullscreen) return;
 
-  wrapper.addEventListener(
-    'wheel',
-    (e) => {
+    e.preventDefault();
 
-      if (!isFullscreen) return;
+    const zoomStep = 0.12;
 
-      e.preventDefault();
+    const factor =
+      e.deltaY < 0
+        ? (1 + zoomStep)
+        : (1 / (1 + zoomStep));
 
+    const newZoom = Math.min(
+      Math.max(currentZoom * factor, 0.05),
+      5
+    );
 
-      const zoomStep = 0.12;
+    const actualFactor = newZoom / currentZoom;
+
+    const rect = wrapper.getBoundingClientRect();
+
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    panX =
+      mouseX -
+      (mouseX - panX) * actualFactor;
+
+    panY =
+      mouseY -
+      (mouseY - panY) * actualFactor;
+
+    currentZoom = newZoom;
+
+    applyTransform();
+
+  }, { passive: false });
+
+  let isDown = false;
+  let startX, startY;
+
+  wrapper.addEventListener('mousedown', (e) => {
+    if (!isFullscreen || e.target.closest('.remove-btn')) return;
+
+    isDown = true;
+
+    startX = e.clientX - panX;
+    startY = e.clientY - panY;
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDown = false;
+  });
+
+  wrapper.addEventListener('mousemove', (e) => {
+    if (!isDown || !isFullscreen) return;
+
+    panX = e.clientX - startX;
+    panY = e.clientY - startY;
+
+    applyTransform();
+  });
+
+  let lastTouchDist = 0;
+
+  wrapper.addEventListener('touchstart', (e) => {
+    if (!isFullscreen) return;
+
+    if (e.touches.length === 1) {
+
+      isDown = true;
+
+      startX = e.touches[0].clientX - panX;
+      startY = e.touches[0].clientY - panY;
+
+    } else if (e.touches.length === 2) {
+
+      isDown = false;
+
+      lastTouchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+
+  }, { passive: true });
+
+  wrapper.addEventListener('touchmove', (e) => {
+    if (!isFullscreen) return;
+
+    const rect = wrapper.getBoundingClientRect();
+
+    if (e.touches.length === 1 && isDown) {
+
+      panX =
+        e.touches[0].clientX - startX;
+
+      panY =
+        e.touches[0].clientY - startY;
+
+      applyTransform();
+
+    } else if (
+      e.touches.length === 2 &&
+      lastTouchDist > 0
+    ) {
+
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+
+      if (currentDist === 0) return;
 
       const factor =
-        e.deltaY < 0
-          ? (1 + zoomStep)
-          : (1 / (1 + zoomStep));
+        currentDist / lastTouchDist;
 
-
-      const newZoom =
-        Math.min(
-          Math.max(
-            currentZoom * factor,
-            0.05
-          ),
-          5
-        );
-
+      const newZoom = Math.min(
+        Math.max(currentZoom * factor, 0.05),
+        5
+      );
 
       const actualFactor =
         newZoom / currentZoom;
 
+      const currentMidX =
+        (e.touches[0].clientX +
+         e.touches[1].clientX) / 2 - rect.left;
 
-      const rect =
-        wrapper.getBoundingClientRect();
-
-
-      const mouseX =
-        e.clientX - rect.left;
-
-
-      const mouseY =
-        e.clientY - rect.top;
-
+      const currentMidY =
+        (e.touches[0].clientY +
+         e.touches[1].clientY) / 2 - rect.top;
 
       panX =
-        mouseX -
-        (mouseX - panX) * actualFactor;
-
+        currentMidX -
+        (currentMidX - panX) * actualFactor;
 
       panY =
-        mouseY -
-        (mouseY - panY) * actualFactor;
-
+        currentMidY -
+        (currentMidY - panY) * actualFactor;
 
       currentZoom = newZoom;
 
+      lastTouchDist = currentDist;
+
       applyTransform();
-    },
-    { passive: false }
-  );
+    }
 
+  }, { passive: true });
 
-  let isDown = false;
-  let startX;
-  let startY;
+  wrapper.addEventListener('touchend', (e) => {
 
+    if (e.touches.length < 2) {
+      lastTouchDist = 0;
+    }
 
-  wrapper.addEventListener(
-    'mousedown',
-    (e) => {
-
-      if (
-        !isFullscreen ||
-        e.target.closest('.remove-btn')
-      ) return;
-
+    if (e.touches.length === 1) {
 
       isDown = true;
 
       startX =
-        e.clientX - panX;
+        e.touches[0].clientX - panX;
 
       startY =
-        e.clientY - panY;
-    }
-  );
+        e.touches[0].clientY - panY;
 
+    } else {
 
-  window.addEventListener(
-    'mouseup',
-    () => {
       isDown = false;
     }
-  );
-
-
-  wrapper.addEventListener(
-    'mousemove',
-    (e) => {
-
-      if (
-        !isDown ||
-        !isFullscreen
-      ) return;
-
-
-      panX =
-        e.clientX - startX;
-
-      panY =
-        e.clientY - startY;
-
-
-      applyTransform();
-    }
-  );
-
-
-  let lastTouchDist = 0;
-
-
-  wrapper.addEventListener(
-    'touchstart',
-    (e) => {
-
-      if (!isFullscreen) return;
-
-
-      if (e.touches.length === 1) {
-
-        isDown = true;
-
-        startX =
-          e.touches[0].clientX - panX;
-
-        startY =
-          e.touches[0].clientY - panY;
-
-
-      } else if (e.touches.length === 2) {
-
-        isDown = false;
-
-        lastTouchDist =
-          Math.hypot(
-            e.touches[0].clientX -
-            e.touches[1].clientX,
-
-            e.touches[0].clientY -
-            e.touches[1].clientY
-          );
-      }
-    },
-    { passive: true }
-  );
-
-
-  wrapper.addEventListener(
-    'touchmove',
-    (e) => {
-
-      if (!isFullscreen) return;
-
-
-      const rect =
-        wrapper.getBoundingClientRect();
-
-
-      if (
-        e.touches.length === 1 &&
-        isDown
-      ) {
-
-        panX =
-          e.touches[0].clientX -
-          startX;
-
-        panY =
-          e.touches[0].clientY -
-          startY;
-
-
-        applyTransform();
-
-
-      } else if (
-        e.touches.length === 2 &&
-        lastTouchDist > 0
-      ) {
-
-        const currentDist =
-          Math.hypot(
-            e.touches[0].clientX -
-            e.touches[1].clientX,
-
-            e.touches[0].clientY -
-            e.touches[1].clientY
-          );
-
-
-        if (currentDist === 0) return;
-
-
-        const factor =
-          currentDist / lastTouchDist;
-
-
-        const newZoom =
-          Math.min(
-            Math.max(
-              currentZoom * factor,
-              0.05
-            ),
-            5
-          );
-
-
-        const actualFactor =
-          newZoom / currentZoom;
-
-
-        const currentMidX =
-          (
-            e.touches[0].clientX +
-            e.touches[1].clientX
-          ) / 2 - rect.left;
-
-
-        const currentMidY =
-          (
-            e.touches[0].clientY +
-            e.touches[1].clientY
-          ) / 2 - rect.top;
-
-
-        panX =
-          currentMidX -
-          (
-            currentMidX - panX
-          ) * actualFactor;
-
-
-        panY =
-          currentMidY -
-          (
-            currentMidY - panY
-          ) * actualFactor;
-
-
-        currentZoom = newZoom;
-
-        lastTouchDist = currentDist;
-
-
-        applyTransform();
-      }
-    },
-    { passive: true }
-  );
-
-
-  wrapper.addEventListener(
-    'touchend',
-    (e) => {
-
-      if (e.touches.length < 2) {
-        lastTouchDist = 0;
-      }
-
-
-      if (e.touches.length === 1) {
-
-        isDown = true;
-
-        startX =
-          e.touches[0].clientX -
-          panX;
-
-        startY =
-          e.touches[0].clientY -
-          panY;
-
-      } else {
-
-        isDown = false;
-      }
-    }
-  );
-
-
-  window.addEventListener(
-    'resize',
-    () => fitToStage()
-  );
+  });
+
+  window.addEventListener('resize', () => {
+    fitToStage();
+  });
 }
 
-
 function clearStage() {
-
-  const stage =
-    document.getElementById('stage');
+  const stage = document.getElementById('stage');
 
   stage.innerHTML = '';
 
   fitToStage();
 }
 
-
 function fitToStage() {
-
   updateStageHeight();
   updateDimensionsCache();
 
-
-  const stage =
-    document.getElementById('stage');
-
+  const stage = document.getElementById('stage');
 
   const buildingItems =
     stage.querySelectorAll('.building-item');
 
-
   if (buildingItems.length === 0) {
 
     currentZoom = 1;
-
     panX = 0;
     panY = 0;
-
 
     applyTransform();
 
     return;
   }
 
-
   const scaleX =
-    stageDim.wrapperW /
-    stageDim.stageW;
-
+    stageDim.wrapperW / stageDim.stageW;
 
   const scaleY =
-    stageDim.wrapperH /
-    stageDim.stageH;
-
+    stageDim.wrapperH / stageDim.stageH;
 
   let newZoom =
-    Math.min(
-      scaleX,
-      scaleY,
-      1
-    );
-
+    Math.min(scaleX, scaleY, 1);
 
   if (
     isNaN(newZoom) ||
     !isFinite(newZoom) ||
     newZoom <= 0
   ) {
-
     newZoom = 1;
   }
-
 
   currentZoom = newZoom;
 
   panX = 0;
 
-
   panY =
     stageDim.wrapperH -
-    (
-      stageDim.stageH *
-      currentZoom
-    );
-
+    (stageDim.stageH * currentZoom);
 
   if (isNaN(panY)) {
     panY = 0;
   }
 
-
   applyTransform();
 }
 
+/* =========================================
+   DODAWANIE BUDYNKU
+========================================= */
 
 function addToStage(building) {
-
   const stage =
     document.getElementById('stage');
-
 
   const item =
     document.createElement('div');
 
-
-  item.className =
-    'building-item';
-
+  item.className = 'building-item';
 
   const built =
     building.built || 'N/A';
 
-
   const h_m =
     building.height_m || 'N/A';
-
 
   const h_ft =
     building.height_ft || 'N/A';
 
-
   item.innerHTML = `
-    <button
-      class="remove-btn"
-      onclick="this.parentElement.remove(); fitToStage();"
-    >
-      &times;
-    </button>
 
-    <div class="building-info">
-      <strong>${building.name}</strong>
+    <div class="building-ui">
 
-      <div class="extra-info">
-        Built: ${built}<br>
-        Height: ${h_m}m / ${h_ft}ft
+      <button class="remove-btn"
+        onclick="this.closest('.building-item').remove(); fitToStage();">
+        &times;
+      </button>
+
+      <div class="building-info">
+
+        <strong>${building.name}</strong>
+
+        <div class="extra-info">
+
+          Built: ${built}<br>
+
+          Height:
+          ${h_m}m /
+          ${h_ft}ft
+
+        </div>
+
       </div>
+
     </div>
 
     <img
       src="${building.image_2d}"
-      alt="${building.name}"
-    >
-  `;
+      alt="${building.name}">
 
+  `;
 
   const img =
     item.querySelector('img');
 
-
-  img.onload =
-    () => fitToStage();
-
+  img.onload = () => {
+    fitToStage();
+  };
 
   stage.appendChild(item);
 
   fitToStage();
 }
 
-
 function renderGrid(data) {
-
   const grid =
     document.getElementById('buildingsGrid');
 
-
   grid.innerHTML = '';
-
 
   data.forEach(b => {
 
     const card =
       document.createElement('div');
 
-
     card.className = 'card';
 
-
-    card.onclick =
-      () => addToStage(b);
-
+    card.onclick = () =>
+      addToStage(b);
 
     const city =
       b.city || '';
 
-
     const country =
       b.country || '';
-
 
     const locationText =
       [city, country]
         .filter(Boolean)
         .join(', ');
 
-
     card.innerHTML = `
+
       <img
         src="${b.thumbnail}"
-        alt="${b.name}"
-      >
+        alt="${b.name}">
 
       <h3>${b.name}</h3>
 
       ${
         locationText
-          ? `
-            <p class="card-location">
-              ${locationText}
-            </p>
-          `
+          ? `<p class="card-location">${locationText}</p>`
           : ''
       }
-    `;
 
+    `;
 
     grid.appendChild(card);
   });
 }
 
-
 function setupFilters() {
-
   const searchInput =
     document.getElementById('searchInput');
 
-
   if (searchInput) {
-
     searchInput.addEventListener(
       'input',
       filterData
@@ -712,15 +505,12 @@ function setupFilters() {
   }
 }
 
-
 function filterData() {
-
   const search =
     document
       .getElementById('searchInput')
       .value
       .toLowerCase();
-
 
   const filtered =
     buildingsData.filter(b => {
@@ -729,16 +519,13 @@ function filterData() {
         (b.name || '')
           .toLowerCase();
 
-
       const city =
         (b.city || '')
           .toLowerCase();
 
-
       const country =
         (b.country || '')
           .toLowerCase();
-
 
       return (
         name.includes(search) ||
@@ -747,9 +534,7 @@ function filterData() {
       );
     });
 
-
   renderGrid(filtered);
 }
-
 
 loadData();
