@@ -2,15 +2,24 @@ let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
 let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
-let addedBuildings = new Set(); // Przechowuje dodane budynki
+let addedBuildings = new Set(); 
 
-// Automatyczne style dla ukrywania kółek i wyglądu aktywnych kafelków
+// Zaktualizowane style: 3px zielona ramka, delikatne rozjaśnienie (opacity: 0.85) i dyskretny krzyżyk
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   .fullscreen .remove-btn { display: none !important; }
-  .card.added { border: 2px solid #007bff; position: relative; }
-  .card.added img { opacity: 0.5; }
-  .card-remove-btn { position: absolute; top: 10px; right: 10px; background: red; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 18px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
+  .card.added img { opacity: 0.85; }
+  .card-remove-indicator { 
+    position: absolute; 
+    top: 5px; 
+    right: 8px; 
+    color: #dc3545; 
+    font-size: 22px; 
+    font-weight: bold; 
+    z-index: 10; 
+    pointer-events: none; 
+  }
 `;
 document.head.appendChild(injectedStyles);
 
@@ -357,17 +366,22 @@ function renderGrid(data) {
     const city = b.city || '';
     const country = b.country || '';
     const locationText = [city, country].filter(Boolean).join(', ');
-    const safeName = b.name.replace(/'/g, "\\'");
 
+    // Jeśli jest zaznaczony, wyświetlamy sam znak X jako wskaźnik (bez własnego onclick)
     card.innerHTML = `
-      ${isAdded ? `<button class="card-remove-btn" onclick="removeBuilding('${safeName}'); event.stopPropagation();">&times;</button>` : ''}
+      ${isAdded ? `<div class="card-remove-indicator">&times;</div>` : ''}
       <img src="${b.thumbnail}" alt="${b.name}">
       <h3>${b.name}</h3>
       ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
     `;
 
+    // Kliknięcie w dowolne miejsce kafelka: dodaje jeśli nie ma, usuwa jeśli jest
     card.onclick = () => {
-      if (!isAdded) addToStage(b);
+      if (isAdded) {
+        removeBuilding(b.name);
+      } else {
+        addToStage(b);
+      }
     };
 
     grid.appendChild(card);
