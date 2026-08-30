@@ -2,6 +2,17 @@ let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
 let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
+let addedBuildings = new Set(); // Przechowuje dodane budynki
+
+// Automatyczne style dla ukrywania kółek i wyglądu aktywnych kafelków
+const injectedStyles = document.createElement('style');
+injectedStyles.innerHTML = `
+  .fullscreen .remove-btn { display: none !important; }
+  .card.added { border: 2px solid #007bff; position: relative; }
+  .card.added img { opacity: 0.5; }
+  .card-remove-btn { position: absolute; top: 10px; right: 10px; background: red; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 18px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+`;
+document.head.appendChild(injectedStyles);
 
 async function loadData() {
   try {
@@ -25,14 +36,8 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-/* =========================================
-   NOWA FUNKCJA
-   Kompensuje zoom dla X-a i dymka
-========================================= */
-
 function updateBuildingUI() {
   const uiElements = document.querySelectorAll('.building-ui');
-
   const inverseScale = 1 / currentZoom;
 
   uiElements.forEach(ui => {
@@ -80,7 +85,6 @@ function updateStageHeight() {
 
 function clampPan() {
   const { wrapperW, wrapperH, stageW, stageH } = stageDim;
-
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
@@ -89,13 +93,11 @@ function clampPan() {
   } else {
     const minPanY = wrapperH - scaledH;
     const maxPanY = 0;
-
     panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
   if (scaledW > wrapperW) {
     const minPanX = wrapperW - scaledW;
-
     panX = Math.min(0, Math.max(minPanX, panX));
   } else {
     panX = 0;
@@ -115,7 +117,6 @@ function applyTransform() {
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
-      /* NOWE */
       updateBuildingUI();
 
       ticking = false;
@@ -127,57 +128,36 @@ function applyTransform() {
 
 function initInteractions() {
   const wrapper = document.getElementById('stageWrapper');
-
   const showInfoCheckbox = document.getElementById('showInfoCheckbox');
 
   showInfoCheckbox.addEventListener('change', (e) => {
     const stage = document.getElementById('stage');
-
     if (e.target.checked) {
       stage.classList.add('show-details');
     } else {
       stage.classList.remove('show-details');
     }
-
     setTimeout(fitToStage, 10);
   });
 
   wrapper.addEventListener('wheel', (e) => {
     if (!isFullscreen) return;
-
     e.preventDefault();
 
     const zoomStep = 0.12;
-
-    const factor =
-      e.deltaY < 0
-        ? (1 + zoomStep)
-        : (1 / (1 + zoomStep));
-
-    const newZoom = Math.min(
-      Math.max(currentZoom * factor, 0.05),
-      5
-    );
-
+    const factor = e.deltaY < 0 ? (1 + zoomStep) : (1 / (1 + zoomStep));
+    const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
     const actualFactor = newZoom / currentZoom;
 
     const rect = wrapper.getBoundingClientRect();
-
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    panX =
-      mouseX -
-      (mouseX - panX) * actualFactor;
-
-    panY =
-      mouseY -
-      (mouseY - panY) * actualFactor;
-
+    panX = mouseX - (mouseX - panX) * actualFactor;
+    panY = mouseY - (mouseY - panY) * actualFactor;
     currentZoom = newZoom;
 
     applyTransform();
-
   }, { passive: false });
 
   let isDown = false;
@@ -185,9 +165,7 @@ function initInteractions() {
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen || e.target.closest('.remove-btn')) return;
-
     isDown = true;
-
     startX = e.clientX - panX;
     startY = e.clientY - panY;
   });
@@ -198,10 +176,8 @@ function initInteractions() {
 
   wrapper.addEventListener('mousemove', (e) => {
     if (!isDown || !isFullscreen) return;
-
     panX = e.clientX - startX;
     panY = e.clientY - startY;
-
     applyTransform();
   });
 
@@ -211,22 +187,16 @@ function initInteractions() {
     if (!isFullscreen) return;
 
     if (e.touches.length === 1) {
-
       isDown = true;
-
       startX = e.touches[0].clientX - panX;
       startY = e.touches[0].clientY - panY;
-
     } else if (e.touches.length === 2) {
-
       isDown = false;
-
       lastTouchDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
     }
-
   }, { passive: true });
 
   wrapper.addEventListener('touchmove', (e) => {
@@ -235,20 +205,10 @@ function initInteractions() {
     const rect = wrapper.getBoundingClientRect();
 
     if (e.touches.length === 1 && isDown) {
-
-      panX =
-        e.touches[0].clientX - startX;
-
-      panY =
-        e.touches[0].clientY - startY;
-
+      panX = e.touches[0].clientX - startX;
+      panY = e.touches[0].clientY - startY;
       applyTransform();
-
-    } else if (
-      e.touches.length === 2 &&
-      lastTouchDist > 0
-    ) {
-
+    } else if (e.touches.length === 2 && lastTouchDist > 0) {
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
@@ -256,60 +216,31 @@ function initInteractions() {
 
       if (currentDist === 0) return;
 
-      const factor =
-        currentDist / lastTouchDist;
+      const factor = currentDist / lastTouchDist;
+      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
+      const actualFactor = newZoom / currentZoom;
 
-      const newZoom = Math.min(
-        Math.max(currentZoom * factor, 0.05),
-        5
-      );
+      const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-      const actualFactor =
-        newZoom / currentZoom;
-
-      const currentMidX =
-        (e.touches[0].clientX +
-         e.touches[1].clientX) / 2 - rect.left;
-
-      const currentMidY =
-        (e.touches[0].clientY +
-         e.touches[1].clientY) / 2 - rect.top;
-
-      panX =
-        currentMidX -
-        (currentMidX - panX) * actualFactor;
-
-      panY =
-        currentMidY -
-        (currentMidY - panY) * actualFactor;
-
+      panX = currentMidX - (currentMidX - panX) * actualFactor;
+      panY = currentMidY - (currentMidY - panY) * actualFactor;
       currentZoom = newZoom;
-
       lastTouchDist = currentDist;
 
       applyTransform();
     }
-
   }, { passive: true });
 
   wrapper.addEventListener('touchend', (e) => {
-
     if (e.touches.length < 2) {
       lastTouchDist = 0;
     }
-
     if (e.touches.length === 1) {
-
       isDown = true;
-
-      startX =
-        e.touches[0].clientX - panX;
-
-      startY =
-        e.touches[0].clientY - panY;
-
+      startX = e.touches[0].clientX - panX;
+      startY = e.touches[0].clientY - panY;
     } else {
-
       isDown = false;
     }
   });
@@ -321,9 +252,9 @@ function initInteractions() {
 
 function clearStage() {
   const stage = document.getElementById('stage');
-
   stage.innerHTML = '';
-
+  addedBuildings.clear();
+  filterData();
   fitToStage();
 }
 
@@ -332,45 +263,27 @@ function fitToStage() {
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
-
-  const buildingItems =
-    stage.querySelectorAll('.building-item');
+  const buildingItems = stage.querySelectorAll('.building-item');
 
   if (buildingItems.length === 0) {
-
     currentZoom = 1;
     panX = 0;
     panY = 0;
-
     applyTransform();
-
     return;
   }
 
-  const scaleX =
-    stageDim.wrapperW / stageDim.stageW;
+  const scaleX = stageDim.wrapperW / stageDim.stageW;
+  const scaleY = stageDim.wrapperH / stageDim.stageH;
+  let newZoom = Math.min(scaleX, scaleY, 1);
 
-  const scaleY =
-    stageDim.wrapperH / stageDim.stageH;
-
-  let newZoom =
-    Math.min(scaleX, scaleY, 1);
-
-  if (
-    isNaN(newZoom) ||
-    !isFinite(newZoom) ||
-    newZoom <= 0
-  ) {
+  if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
     newZoom = 1;
   }
 
   currentZoom = newZoom;
-
   panX = 0;
-
-  panY =
-    stageDim.wrapperH -
-    (stageDim.stageH * currentZoom);
+  panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
 
   if (isNaN(panY)) {
     panY = 0;
@@ -379,160 +292,109 @@ function fitToStage() {
   applyTransform();
 }
 
-/* =========================================
-   DODAWANIE BUDYNKU
-========================================= */
+function removeBuilding(name) {
+  addedBuildings.delete(name);
+  const stage = document.getElementById('stage');
+  const items = stage.querySelectorAll('.building-item');
+  
+  items.forEach(item => {
+    if (item.dataset.name === name) {
+      item.remove();
+    }
+  });
+  
+  filterData(); 
+  fitToStage();
+}
 
 function addToStage(building) {
-  const stage =
-    document.getElementById('stage');
+  if (addedBuildings.has(building.name)) return;
+  addedBuildings.add(building.name);
 
-  const item =
-    document.createElement('div');
-
+  const stage = document.getElementById('stage');
+  const item = document.createElement('div');
   item.className = 'building-item';
+  item.dataset.name = building.name;
 
-  const built =
-    building.built || 'N/A';
-
-  const h_m =
-    building.height_m || 'N/A';
-
-  const h_ft =
-    building.height_ft || 'N/A';
+  const built = building.built || 'N/A';
+  const h_m = building.height_m || 'N/A';
+  const h_ft = building.height_ft || 'N/A';
+  const safeName = building.name.replace(/'/g, "\\'");
 
   item.innerHTML = `
-
     <div class="building-ui">
-
-      <button class="remove-btn"
-        onclick="this.closest('.building-item').remove(); fitToStage();">
-        &times;
-      </button>
-
+      <button class="remove-btn" onclick="removeBuilding('${safeName}')">&times;</button>
       <div class="building-info">
-
         <strong>${building.name}</strong>
-
         <div class="extra-info">
-
           Built: ${built}<br>
-
-          Height:
-          ${h_m}m /
-          ${h_ft}ft
-
+          Height: ${h_m}m / ${h_ft}ft
         </div>
-
       </div>
-
     </div>
-
-    <img
-      src="${building.image_2d}"
-      alt="${building.name}">
-
+    <img src="${building.image_2d}" alt="${building.name}">
   `;
 
-  const img =
-    item.querySelector('img');
-
+  const img = item.querySelector('img');
   img.onload = () => {
     fitToStage();
   };
 
   stage.appendChild(item);
-
+  filterData(); 
   fitToStage();
 }
 
 function renderGrid(data) {
-  const grid =
-    document.getElementById('buildingsGrid');
-
+  const grid = document.getElementById('buildingsGrid');
   grid.innerHTML = '';
 
   data.forEach(b => {
+    const isAdded = addedBuildings.has(b.name);
+    const card = document.createElement('div');
+    card.className = `card ${isAdded ? 'added' : ''}`;
 
-    const card =
-      document.createElement('div');
-
-    card.className = 'card';
-
-    card.onclick = () =>
-      addToStage(b);
-
-    const city =
-      b.city || '';
-
-    const country =
-      b.country || '';
-
-    const locationText =
-      [city, country]
-        .filter(Boolean)
-        .join(', ');
+    const city = b.city || '';
+    const country = b.country || '';
+    const locationText = [city, country].filter(Boolean).join(', ');
+    const safeName = b.name.replace(/'/g, "\\'");
 
     card.innerHTML = `
-
-      <img
-        src="${b.thumbnail}"
-        alt="${b.name}">
-
+      ${isAdded ? `<button class="card-remove-btn" onclick="removeBuilding('${safeName}'); event.stopPropagation();">&times;</button>` : ''}
+      <img src="${b.thumbnail}" alt="${b.name}">
       <h3>${b.name}</h3>
-
-      ${
-        locationText
-          ? `<p class="card-location">${locationText}</p>`
-          : ''
-      }
-
+      ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
     `;
+
+    card.onclick = () => {
+      if (!isAdded) addToStage(b);
+    };
 
     grid.appendChild(card);
   });
 }
 
 function setupFilters() {
-  const searchInput =
-    document.getElementById('searchInput');
-
+  const searchInput = document.getElementById('searchInput');
   if (searchInput) {
-    searchInput.addEventListener(
-      'input',
-      filterData
-    );
+    searchInput.addEventListener('input', filterData);
   }
 }
 
 function filterData() {
-  const search =
-    document
-      .getElementById('searchInput')
-      .value
-      .toLowerCase();
-
-  const filtered =
-    buildingsData.filter(b => {
-
-      const name =
-        (b.name || '')
-          .toLowerCase();
-
-      const city =
-        (b.city || '')
-          .toLowerCase();
-
-      const country =
-        (b.country || '')
-          .toLowerCase();
-
-      return (
-        name.includes(search) ||
-        city.includes(search) ||
-        country.includes(search)
-      );
-    });
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  
+  const filtered = buildingsData.filter(b => {
+    const name = (b.name || '').toLowerCase();
+    const city = (b.city || '').toLowerCase();
+    const country = (b.country || '').toLowerCase();
+    
+    return (
+      name.includes(search) ||
+      city.includes(search) ||
+      country.includes(search)
+    );
+  });
 
   renderGrid(filtered);
 }
