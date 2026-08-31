@@ -1,4 +1,4 @@
-const PIXELS_PER_METER = 10; // 1 px = 10 cm
+const PIXELS_PER_METER = 10;
 
 let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
@@ -30,7 +30,7 @@ async function loadData() {
     renderGrid(buildingsData);
     setupFilters();
     initInteractions();
-    renderHeightGrid(); // Początkowe renderowanie siatki
+    renderHeightGrid();
   } catch (e) {
     console.error("Błąd ładowania JSON:", e);
   }
@@ -91,9 +91,7 @@ function updateStageHeight() {
   const neededH = maxBHeight > 0 ? (maxBHeight + 950) : wrapperH;
 
   stage.style.height = neededH + 'px';
-  
-  // Przerysuj siatkę po zmianie wysokości sceny
-  renderHeightGrid(); 
+  renderHeightGrid();
 }
 
 function clampPan() {
@@ -122,6 +120,13 @@ function applyTransform() {
     requestAnimationFrame(() => {
       clampPan();
 
+      const displayZoom = Math.round(currentZoom * 100);
+
+      const zoomValElem = document.getElementById('zoomVal');
+      if (zoomValElem) {
+        zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
+      }
+
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
@@ -136,9 +141,8 @@ function applyTransform() {
 
 function initInteractions() {
   const wrapper = document.getElementById('stageWrapper');
-  
-  // --- UI CONTROLS (Details, Names, Grid) ---
   const showInfoCheckbox = document.getElementById('showInfoCheckbox');
+
   if (showInfoCheckbox) {
     showInfoCheckbox.addEventListener('change', (e) => {
       const stage = document.getElementById('stage');
@@ -172,7 +176,6 @@ function initInteractions() {
     radio.addEventListener('change', renderHeightGrid);
   });
 
-  // --- ZOOM & PAN (Mouse & Touch) ---
   wrapper.addEventListener('wheel', (e) => {
     if (!isFullscreen) return;
     e.preventDefault();
@@ -284,24 +287,6 @@ function initInteractions() {
   });
 }
 
-// --- GRID LOGIC ---
-
-function toggleGridControls() {
-  const showGrid = document.getElementById('showGridCheckbox').checked;
-  const unitRadios = document.querySelectorAll('input[name="gridUnit"]');
-  const unitSelector = document.getElementById('unitSelector');
-
-  unitRadios.forEach(radio => {
-    radio.disabled = !showGrid;
-  });
-
-  if (unitSelector) {
-    unitSelector.classList.toggle('disabled', !showGrid);
-  }
-
-  renderHeightGrid();
-}
-
 function renderHeightGrid() {
   const gridOverlay = document.getElementById('gridOverlay');
   const showGridCheckbox = document.getElementById('showGridCheckbox');
@@ -334,7 +319,6 @@ function renderHeightGrid() {
       createGridLine(gridOverlay, bottomPx, isMajor ? `${m}m` : null, isMajor);
     }
   } else {
-    // Imperial (ft) - 1 ft = 0.3048 m
     const minorStepFt = 100;
     const majorStepFt = 500;
     const maxFeet = maxMeters / 0.3048;
@@ -365,16 +349,29 @@ function createGridLine(container, bottomPx, labelText, isMajor) {
   container.appendChild(line);
 }
 
-// --- STAGE MANAGEMENT ---
+function toggleGridControls() {
+  const showGridCheckbox = document.getElementById('showGridCheckbox');
+  const showGrid = showGridCheckbox ? showGridCheckbox.checked : false;
+  const unitRadios = document.querySelectorAll('input[name="gridUnit"]');
+  const unitSelector = document.getElementById('unitSelector');
+
+  unitRadios.forEach(radio => {
+    radio.disabled = !showGrid;
+  });
+
+  if (unitSelector) {
+    unitSelector.classList.toggle('disabled', !showGrid);
+  }
+
+  renderHeightGrid();
+}
 
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
-    // Usuwamy tylko budynki, aby nie wykasować warstwy siatki
     const items = stage.querySelectorAll('.building-item');
     items.forEach(item => item.remove());
   }
-  
   addedBuildings.clear();
   filterData();
   fitToStage();
@@ -465,10 +462,9 @@ function addToStage(building) {
   fitToStage();
 }
 
-// --- DATA & GRID RENDERING ---
-
 function renderGrid(data) {
   const grid = document.getElementById('buildingsGrid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   data.forEach(b => {
@@ -507,7 +503,8 @@ function setupFilters() {
 }
 
 function filterData() {
-  const search = document.getElementById('searchInput').value.toLowerCase();
+  const searchInput = document.getElementById('searchInput');
+  const search = searchInput ? searchInput.value.toLowerCase() : '';
   
   const filtered = buildingsData.filter(b => {
     const name = (b.name || '').toLowerCase();
