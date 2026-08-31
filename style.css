@@ -179,7 +179,7 @@ select {
   align-items: flex-end;
   justify-content: flex-start;
   gap: 30px;
-  padding: 160px 30px 25px 30px; /* Zwiększono górny padding ze 20px na 160px */
+  padding: 160px 30px 25px 30px;
   box-sizing: border-box;
   min-width: 100%;
   width: max-content;
@@ -216,10 +216,7 @@ select {
   padding: 0;
 }
 
-/* =========================================
-   UI BUDYNKU
-   Ten kontener dostaje odwrotne skalowanie
-========================================= */
+/* UI BUDYNKU */
 
 .building-ui {
   position: absolute;
@@ -234,12 +231,12 @@ select {
 
 .remove-btn {
   position: absolute;
-  top: -120px; /* Podniesiono pozycję z -55px na -120px */
+  top: -84px;
   left: 50%;
   transform: translateX(-50%);
-  width: 48px;
-  height: 48px;
-  font-size: 26px;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
   background: #ff4d4d;
   color: white;
   border: none;
@@ -253,7 +250,7 @@ select {
 
 .building-info {
   position: absolute;
-  top: -60px; /* Podniesiono pozycję z -10px na -60px */
+  top: -60px;
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 6px;
