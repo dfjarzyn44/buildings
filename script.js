@@ -87,7 +87,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 100) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 200) : wrapperH;
 
   stage.style.height = neededH + 'px';
 }
@@ -367,7 +367,6 @@ function renderGrid(data) {
     const country = b.country || '';
     const locationText = [city, country].filter(Boolean).join(', ');
 
-    // Jeśli jest zaznaczony, wyświetlamy sam znak X jako wskaźnik (bez własnego onclick)
     card.innerHTML = `
       ${isAdded ? `<div class="card-remove-indicator">&times;</div>` : ''}
       <img src="${b.thumbnail}" alt="${b.name}">
@@ -375,7 +374,6 @@ function renderGrid(data) {
       ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
     `;
 
-    // Kliknięcie w dowolne miejsce kafelka: dodaje jeśli nie ma, usuwa jeśli jest
     card.onclick = () => {
       if (isAdded) {
         removeBuilding(b.name);
