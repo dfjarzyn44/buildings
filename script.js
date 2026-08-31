@@ -142,7 +142,6 @@ function applyTransform() {
 function initInteractions() {
   const stage = document.getElementById('stage');
 
-  // Nasłuchiwanie znaczników Names, Height, Years built
   const showNamesCheckbox = document.getElementById('showNamesCheckbox');
   if (showNamesCheckbox) {
     showNamesCheckbox.addEventListener('change', (e) => {
