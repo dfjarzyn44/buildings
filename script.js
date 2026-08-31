@@ -140,30 +140,27 @@ function applyTransform() {
 }
 
 function initInteractions() {
-  const wrapper = document.getElementById('stageWrapper');
-  const showInfoCheckbox = document.getElementById('showInfoCheckbox');
+  const stage = document.getElementById('stage');
 
-  if (showInfoCheckbox) {
-    showInfoCheckbox.addEventListener('change', (e) => {
-      const stage = document.getElementById('stage');
-      if (e.target.checked) {
-        stage.classList.add('show-details');
-      } else {
-        stage.classList.remove('show-details');
-      }
-      setTimeout(fitToStage, 10);
-    });
-  }
-
+  // Nasłuchiwanie znaczników Names, Height, Years built
   const showNamesCheckbox = document.getElementById('showNamesCheckbox');
   if (showNamesCheckbox) {
     showNamesCheckbox.addEventListener('change', (e) => {
-      const stage = document.getElementById('stage');
-      if (e.target.checked) {
-        stage.classList.remove('hide-names');
-      } else {
-        stage.classList.add('hide-names');
-      }
+      stage.classList.toggle('hide-names', !e.target.checked);
+    });
+  }
+
+  const showHeightCheckbox = document.getElementById('showHeightCheckbox');
+  if (showHeightCheckbox) {
+    showHeightCheckbox.addEventListener('change', (e) => {
+      stage.classList.toggle('hide-height', !e.target.checked);
+    });
+  }
+
+  const showYearsCheckbox = document.getElementById('showYearsCheckbox');
+  if (showYearsCheckbox) {
+    showYearsCheckbox.addEventListener('change', (e) => {
+      stage.classList.toggle('hide-years', !e.target.checked);
     });
   }
 
@@ -175,6 +172,8 @@ function initInteractions() {
   document.querySelectorAll('input[name="gridUnit"]').forEach(radio => {
     radio.addEventListener('change', renderHeightGrid);
   });
+
+  const wrapper = document.getElementById('stageWrapper');
 
   wrapper.addEventListener('wheel', (e) => {
     if (!isFullscreen) return;
@@ -442,11 +441,9 @@ function addToStage(building) {
   item.innerHTML = `
     <div class="building-ui">
       <div class="building-info">
-        <strong class="building-name">${building.name}</strong>
-        <div class="extra-info">
-          Built: ${built}<br>
-          Height: ${h_m}m / ${h_ft}ft
-        </div>
+        <div class="building-name">${building.name}</div>
+        <div class="building-height">Height: ${h_m}m / ${h_ft}ft</div>
+        <div class="building-years">Built: ${built}</div>
       </div>
     </div>
     <img src="${building.image_2d}" alt="${building.name}">
