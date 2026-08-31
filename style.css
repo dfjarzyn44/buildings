@@ -78,7 +78,7 @@ select {
   font-size: 13px;
 }
 
-/* SEKCJA STAGE I KONTROLKI */
+/* STAGE & CONTROLS */
 
 .stage-section {
   margin-top: 25px;
@@ -156,7 +156,7 @@ select {
   background: #e2e2e2;
 }
 
-/* OKNO PODGLĄDU */
+/* STAGE WRAPPER */
 
 .stage-wrapper {
   width: 100%;
@@ -170,7 +170,7 @@ select {
   touch-action: pan-y;
 }
 
-/* TRYB PEŁNOEKRANOWY */
+/* FULLSCREEN MODE */
 
 .stage-wrapper.fullscreen {
   position: fixed;
@@ -210,7 +210,7 @@ select {
   display: block;
 }
 
-/* PŁÓTNO I TRAWA / PODŁOŻE */
+/* STAGE CANVAS & GROUND */
 
 #stage {
   display: flex;
@@ -229,7 +229,7 @@ select {
   border-bottom: 12px solid #57ab59;
 }
 
-/* BUDYNEK */
+/* BUILDING ITEM */
 
 .building-item {
   display: flex;
@@ -250,7 +250,7 @@ select {
   padding: 0;
 }
 
-/* UI BUDYNKU I ETYKIETY */
+/* BUILDING UI & LABELS */
 
 .building-ui {
   position: absolute;
@@ -287,7 +287,7 @@ select {
   color: #444;
 }
 
-/* STEROWANIE WIDOCZNOŚCIĄ ETYKIET */
+/* VISIBILITY TOGGLES */
 
 #stage.hide-names .building-name {
   display: none;
@@ -301,12 +301,12 @@ select {
   display: none;
 }
 
-/* Gdy wszystkie 3 opcje są wyłączone - ukryj cały biały dymek */
+/* Hide tooltip box completely if all labels are off */
 #stage.hide-names.hide-height.hide-years .building-info {
   display: none;
 }
 
-/* LOKALIZACJA W KAFELKACH */
+/* CARD LOCATION */
 
 .card-location {
   margin: 4px 0 0 0;
@@ -314,7 +314,7 @@ select {
   color: #666;
 }
 
-/* MOBILE */
+/* MOBILE LAYOUT */
 
 @media (max-width: 480px) {
   body {
@@ -341,7 +341,7 @@ select {
   }
 }
 
-/* REGUŁY SIATKI */
+/* GRID OVERLAY */
 
 #gridOverlay {
   position: absolute;
@@ -357,21 +357,27 @@ select {
   position: absolute;
   left: 0;
   width: 100%;
-  border-top: 1px dashed rgba(0, 0, 0, 0.25);
+  /* Pogrubiona cienka linia (z 1px na 2px) */
+  border-top: 2px dashed rgba(0, 0, 0, 0.25);
 }
 
 .grid-line.major {
-  border-top: 1px solid rgba(0, 0, 0, 0.5);
+  /* Pogrubiona główna linia (z 1px na 3px) */
+  border-top: 3px solid rgba(0, 0, 0, 0.5);
 }
 
 .grid-label {
   position: absolute;
   left: 10px;
-  top: -12px;
-  font-size: 11px;
+  /* Zmienione na bottom, żeby etykieta siedziała ładnie nad linią niezależnie od jej grubości */
+  bottom: 4px;
+  /* Zwiększony bazowy rozmiar */
+  font-size: 14px;
   color: #333;
   background: rgba(255, 255, 255, 0.85);
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   font-weight: bold;
+  /* Punkt zaczepienia dla skalowania - z lewej od dołu */
+  transform-origin: left bottom;
 }
