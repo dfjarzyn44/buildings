@@ -95,13 +95,13 @@ select {
 .stage-controls {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .controls-row {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
@@ -109,8 +109,8 @@ select {
 .radio-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 15px;
+  gap: 5px;
+  font-size: 14px;
   color: #333;
   cursor: pointer;
   user-select: none;
@@ -118,7 +118,8 @@ select {
 
 .unit-selector {
   display: flex;
-  gap: 15px;
+  gap: 12px;
+  align-items: center;
 }
 
 .unit-selector.disabled {
@@ -225,7 +226,7 @@ select {
   position: absolute;
   top: 0;
   left: 0;
-  border-bottom: 12px solid #57ab59; /* Zielony pasek trawy/podłoża */
+  border-bottom: 12px solid #57ab59;
 }
 
 /* BUDYNEK */
@@ -297,6 +298,11 @@ select {
 }
 
 #stage.hide-years .building-years {
+  display: none;
+}
+
+/* Gdy wszystkie 3 opcje są wyłączone - ukryj cały biały dymek */
+#stage.hide-names.hide-height.hide-years .building-info {
   display: none;
 }
 
