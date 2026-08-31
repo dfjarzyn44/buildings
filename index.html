@@ -16,19 +16,41 @@
 
   <div class="stage-header">
     <h2>Comparison Area</h2>
-    <div class="zoom-controls">
-      <label class="info-toggle">
-        <input type="checkbox" id="showInfoCheckbox"> Show details
-      </label>
-      <button class="btn-action" id="toggleFsBtn" onclick="toggleFullscreen()">Open Interactive Canvas</button>
-      <span>Scale: <strong id="zoomVal">100%</strong></span>
-      <button onclick="clearStage()">Reset</button>
+    <div class="stage-controls">
+      <!-- Rząd 1: Nazwy, szczegóły i akcje -->
+      <div class="controls-row primary-controls">
+        <label class="toggle-label">
+          <input type="checkbox" id="showNamesCheckbox" checked> Show names
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="showInfoCheckbox"> Show details
+        </label>
+        <button class="btn-action" id="toggleFsBtn" onclick="toggleFullscreen()">Open Interactive Canvas</button>
+        <button class="btn-reset" onclick="clearStage()">Reset</button>
+      </div>
+
+      <!-- Rząd 2: Warstwy (Siatka i jednostki) -->
+      <div class="controls-row secondary-controls">
+        <label class="toggle-label">
+          <input type="checkbox" id="showGridCheckbox"> Show grid
+        </label>
+        <div class="unit-selector disabled" id="unitSelector">
+          <label class="radio-label">
+            <input type="radio" name="gridUnit" value="metric" checked disabled> Metric (m)
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="gridUnit" value="imperial" disabled> Imperial (ft)
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="stage-wrapper" id="stageWrapper">
     <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
-    <div id="stage"></div>
+    <div id="stage">
+      <div id="gridOverlay" class="grid-overlay"></div>
+    </div>
   </div>
 
   <script src="script.js"></script>
