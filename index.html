@@ -18,47 +18,45 @@
     <h2>Comparison Area</h2>
     
     <div class="stage-controls">
-      <!-- Rząd 1: Przyciski akcji na samej górze -->
+      <!-- Rząd 1: Przyciski akcji -->
       <div class="controls-row">
         <button class="btn-action" id="toggleFsBtn" onclick="toggleFullscreen()">Open Interactive Canvas</button>
         <button class="btn-reset" onclick="clearStage()">Clear</button>
       </div>
 
-      <!-- Rząd 2: Trzy znaczniki w jednym rzędzie -->
+      <!-- Rząd 2: Trzy znaczniki w jednym rzędzie (domyślnie odznaczone) -->
       <div class="controls-row">
         <label class="toggle-label">
-          <input type="checkbox" id="showNamesCheckbox" checked> Names
+          <input type="checkbox" id="showNamesCheckbox"> Names
         </label>
         <label class="toggle-label">
-          <input type="checkbox" id="showHeightCheckbox" checked> Height
+          <input type="checkbox" id="showHeightCheckbox"> Height
         </label>
         <label class="toggle-label">
-          <input type="checkbox" id="showYearsCheckbox" checked> Years built
+          <input type="checkbox" id="showYearsCheckbox"> Years built
         </label>
       </div>
 
-      <!-- Rząd 3: Siatka -->
+      <!-- Rząd 3: Siatka + Jednostki w jednym rzędzie -->
       <div class="controls-row">
         <label class="toggle-label">
-          <input type="checkbox" id="showGridCheckbox"> Show grid
+          <input type="checkbox" id="showGridCheckbox"> Grid:
         </label>
-      </div>
-
-      <!-- Rząd 4: Wybór jednostek -->
-      <div class="controls-row unit-selector disabled" id="unitSelector">
-        <label class="radio-label">
-          <input type="radio" name="gridUnit" value="metric" checked disabled> Metric (m)
-        </label>
-        <label class="radio-label">
-          <input type="radio" name="gridUnit" value="imperial" disabled> Imperial (ft)
-        </label>
+        <div class="unit-selector disabled" id="unitSelector">
+          <label class="radio-label">
+            <input type="radio" name="gridUnit" value="metric" checked disabled> Metric (m)
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="gridUnit" value="imperial" disabled> Imperial (ft)
+          </label>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="stage-wrapper" id="stageWrapper">
     <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
-    <div id="stage">
+    <div id="stage" class="hide-names hide-height hide-years">
       <div id="gridOverlay" class="grid-overlay"></div>
     </div>
   </div>
