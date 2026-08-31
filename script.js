@@ -86,7 +86,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 700) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 850) : wrapperH;
 
   stage.style.height = neededH + 'px';
 }
