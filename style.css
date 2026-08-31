@@ -231,12 +231,12 @@ select {
 
 .remove-btn {
   position: absolute;
-  top: -84px;
+  top: -95px;
   left: 50%;
   transform: translateX(-50%);
-  width: 34px;
-  height: 34px;
-  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  font-size: 15px;
   background: #ff4d4d;
   color: white;
   border: none;
@@ -244,6 +244,9 @@ select {
   cursor: pointer;
   z-index: 10;
   pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* INFORMACJE */
