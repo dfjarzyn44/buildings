@@ -6,7 +6,6 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
-  .fullscreen .remove-btn { display: none !important; }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
   .card-remove-indicator { 
@@ -172,7 +171,7 @@ function initInteractions() {
   let startX, startY;
 
   wrapper.addEventListener('mousedown', (e) => {
-    if (!isFullscreen || e.target.closest('.remove-btn')) return;
+    if (!isFullscreen) return;
     isDown = true;
     startX = e.clientX - panX;
     startY = e.clientY - panY;
@@ -327,11 +326,9 @@ function addToStage(building) {
   const built = building.built || 'N/A';
   const h_m = building.height_m || 'N/A';
   const h_ft = building.height_ft || 'N/A';
-  const safeName = building.name.replace(/'/g, "\\'");
 
   item.innerHTML = `
     <div class="building-ui">
-      <button class="remove-btn" onclick="removeBuilding('${safeName}')">&times;</button>
       <div class="building-info">
         <strong>${building.name}</strong>
         <div class="extra-info">
