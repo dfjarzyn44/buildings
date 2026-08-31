@@ -32,7 +32,7 @@ async function loadData() {
     initInteractions();
     renderHeightGrid();
   } catch (e) {
-    console.error("Błąd ładowania JSON:", e);
+    console.error("JSON loading error:", e);
   }
 }
 
@@ -46,12 +46,18 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
+// TUTAJ ZMIANA: Funkcja wymusza stały rozmiar dla budynków ORAZ etykiet siatki
 function updateBuildingUI() {
   const uiElements = document.querySelectorAll('.building-ui');
+  const gridLabels = document.querySelectorAll('.grid-label');
   const inverseScale = 1 / currentZoom;
 
   uiElements.forEach(ui => {
     ui.style.transform = `scale(${inverseScale})`;
+  });
+
+  gridLabels.forEach(label => {
+    label.style.transform = `scale(${inverseScale})`;
   });
 }
 
@@ -330,6 +336,9 @@ function renderHeightGrid() {
       createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
     }
   }
+  
+  // TUTAJ ZMIANA: Aktualizujemy skalę etykiet natychmiast po narysowaniu siatki
+  updateBuildingUI();
 }
 
 function createGridLine(container, bottomPx, labelText, isMajor) {
