@@ -4,7 +4,6 @@ let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
 let addedBuildings = new Set(); 
 
-// Zaktualizowane style: 3px zielona ramka, delikatne rozjaśnienie (opacity: 0.85) i dyskretny krzyżyk
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   .fullscreen .remove-btn { display: none !important; }
@@ -87,7 +86,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 200) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 500) : wrapperH;
 
   stage.style.height = neededH + 'px';
 }
