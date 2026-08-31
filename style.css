@@ -227,28 +227,6 @@ select {
   pointer-events: none;
 }
 
-/* PRZYCISK USUWANIA */
-
-.remove-btn {
-  position: absolute;
-  top: -95px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 28px;
-  height: 28px;
-  font-size: 15px;
-  background: #ff4d4d;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  z-index: 10;
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* INFORMACJE */
 
 .building-info {
