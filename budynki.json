@@ -5,8 +5,8 @@
     "country": "Egypt",
     "city": "Giza",
     "category": "Ancient Monuments",
-    "height_m": 138,
-    "year_built": -2560,
+    "height_m": "146 m / 481 ft",
+    "year_built": "2560 BC",
     "thumbnail": "Mini/cheops-pyramid.mini.webp",
     "image_2d": "Buildings2D/cheops-pyramid.webp"
   },
@@ -16,7 +16,7 @@
     "country": "United States",
     "city": "New York City",
     "category": "Skyscrapers",
-    "height_m": 319,
+    "height_m": "319 m / 1046 ft",
     "year_built": 1930,
     "thumbnail": "Mini/Chrysler-building.mini.webp",
     "image_2d": "Buildings2D/Chrysler-building.webp"
@@ -27,7 +27,7 @@
     "country": "Italy",
     "city": "Rome",
     "category": "Ancient Monuments",
-    "height_m": 48,
+    "height_m": "48 m / 157 ft",
     "year_built": 80,
     "thumbnail": "Mini/Colloseum.mini.webp",
     "image_2d": "Buildings2D/Colloseum.webp"
@@ -38,7 +38,7 @@
     "country": "France",
     "city": "Paris",
     "category": "Towers & Monuments",
-    "height_m": 300,
+    "height_m": "300 m / 984 ft",
     "year_built": 1889,
     "thumbnail": "Mini/eiffel-tower.mini.webp",
     "image_2d": "Buildings2D/eiffel-tower.webp"
@@ -49,7 +49,7 @@
     "country": "United States",
     "city": "New York City",
     "category": "Skyscrapers",
-    "height_m": 443,
+    "height_m": "443 m / 1454 ft",
     "year_built": 1931,
     "thumbnail": "Mini/empire-state-building.mini.webp",
     "image_2d": "Buildings2D/empire-state-building.webp"
@@ -60,7 +60,7 @@
     "country": "Russia",
     "city": "Moscow",
     "category": "Skyscrapers",
-    "height_m": 240,
+    "height_m": "240 m / 787 ft",
     "year_built": 1953,
     "thumbnail": "Mini/moscow-university.mini.webp",
     "image_2d": "Buildings2D/moscow-university.webp"
@@ -71,7 +71,7 @@
     "country": "France",
     "city": "Paris",
     "category": "Cathedrals & Churches",
-    "height_m": 69,
+    "height_m": "69 m / 226 ft",
     "year_built": 1345,
     "thumbnail": "Mini/Notredame.mini.webp",
     "image_2d": "Buildings2D/notredame.sideview.webp"
@@ -82,7 +82,7 @@
     "country": "Poland",
     "city": "Warsaw",
     "category": "Skyscrapers",
-    "height_m": 237,
+    "height_m": "237 m / 778 ft",
     "year_built": 1955,
     "thumbnail": "Mini/PKiN.mini.webp",
     "image_2d": "Buildings2D/PKiN.webp"
@@ -93,7 +93,7 @@
     "country": "United States",
     "city": "New York City",
     "category": "Towers & Monuments",
-    "height_m": 93,
+    "height_m": "93 m / 305 ft",
     "year_built": 1886,
     "thumbnail": "Mini/statue-of-liberty.mini.webp",
     "image_2d": "Buildings2D/statue-of-liberty.webp"
@@ -104,7 +104,7 @@
     "country": "United Kingdom",
     "city": "London",
     "category": "Skyscrapers",
-    "height_m": 310,
+    "height_m": "310 m / 1017 ft",
     "year_built": 2012,
     "thumbnail": "Mini/the-shard.mini.webp",
     "image_2d": "Buildings2D/the-shard.webp"
@@ -115,7 +115,7 @@
     "country": "United States",
     "city": "Washington, D.C.",
     "category": "Government Buildings",
-    "height_m": 21,
+    "height_m": "21 m / 70 ft",
     "year_built": 1800,
     "thumbnail": "Mini/white-house.mini.webp",
     "image_2d": "Buildings2D/white-house.webp"
@@ -126,7 +126,7 @@
     "country": "United States",
     "city": "Los Angeles",
     "category": "Skyscrapers",
-    "height_m": 310,
+    "height_m": "310 m / 1018 ft",
     "year_built": 1989,
     "thumbnail": "Mini/us-bank-tower.mini.webp",
     "image_2d": "Buildings2D/us-bank-tower.webp"
@@ -137,9 +137,42 @@
     "country": "United Arab Emirates",
     "city": "Dubai",
     "category": "Skyscrapers",
-    "height_m": 828,
+    "height_m": "828 m / 2717 ft",
     "year_built": 2010,
     "thumbnail": "Mini/burj-khalifa.mini.webp",
     "image_2d": "Buildings2D/burj-khalifa.webp"
+  },
+  {
+    "id": "willis-tower",
+    "name": "Willis Tower",
+    "country": "United States",
+    "city": "Chicago",
+    "category": "Skyscrapers",
+    "height_m": "520 m / 1706 ft",
+    "year_built": 1974,
+    "thumbnail": "Mini/willis-tower.mini.webp",
+    "image_2d": "Buildings2D/willis-tower.webp"
+  },
+  {
+    "id": "taj-mahal",
+    "name": "Taj Mahal",
+    "country": "India",
+    "city": "Agra",
+    "category": "Ancient Monuments",
+    "height_m": "73 m / 240 ft",
+    "year_built": 1653,
+    "thumbnail": "Mini/taj-mahal.mini.webp",
+    "image_2d": "Buildings2D/taj-mahal.webp"
+  },
+  {
+    "id": "cn-tower",
+    "name": "CN Tower",
+    "country": "Canada",
+    "city": "Toronto",
+    "category": "Towers & Monuments",
+    "height_m": "553 m / 1815 ft",
+    "year_built": 1976,
+    "thumbnail": "Mini/cn-tower.mini.webp",
+    "image_2d": "Buildings2D/cn-tower.webp"
   }
 ]
