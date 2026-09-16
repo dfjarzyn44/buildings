@@ -20,6 +20,9 @@ injectedStyles.innerHTML = `
     z-index: 10; 
     pointer-events: none; 
   }
+  .building-ui {
+    transition: transform 0.15s ease-out;
+  }
 `;
 document.head.appendChild(injectedStyles);
 
@@ -46,14 +49,19 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// TUTAJ ZMIANA: Funkcja wymusza stały rozmiar dla budynków ORAZ etykiet siatki
+// TUTAJ ZMIANA: Naprzemienne układanie dymków (góra-dół) + skalowanie
 function updateBuildingUI() {
-  const uiElements = document.querySelectorAll('.building-ui');
   const gridLabels = document.querySelectorAll('.grid-label');
   const inverseScale = 1 / currentZoom;
 
-  uiElements.forEach(ui => {
-    ui.style.transform = `scale(${inverseScale})`;
+  const buildingItems = document.querySelectorAll('#stage .building-item');
+  buildingItems.forEach((item, index) => {
+    const ui = item.querySelector('.building-ui');
+    if (ui) {
+      // Budynki nieparzyste (index % 2 !== 0) wędrują wyżej o 65px
+      const staggerY = (index % 2 === 0) ? 0 : -65;
+      ui.style.transform = `scale(${inverseScale}) translateY(${staggerY}px)`;
+    }
   });
 
   gridLabels.forEach(label => {
@@ -336,8 +344,7 @@ function renderHeightGrid() {
       createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
     }
   }
-  
-  // TUTAJ ZMIANA: Aktualizujemy skalę etykiet natychmiast po narysowaniu siatki
+
   updateBuildingUI();
 }
 
@@ -433,6 +440,7 @@ function removeBuilding(name) {
   fitToStage();
 }
 
+// TUTAJ ZMIANA: Czyste formatowanie dymka (bez niepotrzebnych słów i bez "N/A")
 function addToStage(building) {
   if (addedBuildings.has(building.name)) return;
   addedBuildings.add(building.name);
@@ -442,16 +450,34 @@ function addToStage(building) {
   item.className = 'building-item';
   item.dataset.name = building.name;
 
-  const built = building.built || 'N/A';
-  const h_m = building.height_m || 'N/A';
-  const h_ft = building.height_ft || 'N/A';
+  let heightStr = '';
+  if (building.height_m && building.height_m !== 'N/A') {
+    heightStr = `${building.height_m} m`;
+    if (building.height_ft && building.height_ft !== 'N/A') {
+      heightStr += ` / ${building.height_ft} ft`;
+    }
+  } else if (building.height_ft && building.height_ft !== 'N/A') {
+    heightStr = `${building.height_ft} ft`;
+  }
+
+  let builtStr = '';
+  const year = building.year_built || building.built;
+  if (year && year !== 'N/A') {
+    builtStr = `${year}`;
+  }
+
+  let uiContent = `<div class="building-name">${building.name}</div>`;
+  if (heightStr) {
+    uiContent += `<div class="building-height">${heightStr}</div>`;
+  }
+  if (builtStr) {
+    uiContent += `<div class="building-years">${builtStr}</div>`;
+  }
 
   item.innerHTML = `
     <div class="building-ui">
       <div class="building-info">
-        <div class="building-name">${building.name}</div>
-        <div class="building-height">Height: ${h_m}m / ${h_ft}ft</div>
-        <div class="building-years">Built: ${built}</div>
+        ${uiContent}
       </div>
     </div>
     <img src="${building.image_2d}" alt="${building.name}">
