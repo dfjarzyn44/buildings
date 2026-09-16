@@ -23,6 +23,20 @@ injectedStyles.innerHTML = `
   .building-ui {
     transition: transform 0.1s ease-out;
   }
+  #stage {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    gap: 50px !important;
+    position: relative;
+  }
+  .building-item {
+    position: relative !important;
+    flex-shrink: 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
 `;
 document.head.appendChild(injectedStyles);
 
@@ -49,7 +63,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// POPRAWIONY UKŁAD: BAZUJE NA KOLEJNOŚCI W DOM ORAZ BEZPIECZNYCH ODSTĘPACH
+// UKŁAD WIELORZĘDOWY OPARTY NA KOLIZJACH POZIOMYCH
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -61,7 +75,6 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Znajdujemy najwyższy budynek na scenie w pikselach
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
@@ -72,7 +85,6 @@ function updateBuildingUI() {
 
   const isZoomedIn = currentZoom > 1.2;
 
-  // Definiujemy 3 poziomy wysokości (rzędy) w pikselach ekranu
   const rowOffsets = [30, 105, 180];
   const rowIntervals = [[], [], []]; 
   const cardWidth = 190; 
@@ -82,7 +94,6 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    // Używamy bezpiecznego pobierania pozycji poziomej
     const left = item.offsetLeft || 0;
     const right = left + cardWidth;
 
@@ -127,11 +138,10 @@ function toggleFullscreen() {
 
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
-    document.body.classList.add('no-scroll');
+    // Usunięto blokadę body.no-scroll, żeby nie psuć robienia screenów
     btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
-    document.body.classList.remove('no-scroll');
     btn.innerText = " Open Interactive Canvas";
   }
 
