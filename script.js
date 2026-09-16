@@ -49,7 +49,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// INTELIGENTNY UKŁAD 3-RZĘDOWY OPARTY NA KOLIZJACH I POZIOMIE ZOOMU
+// INTELIGENTNY UKŁAD LOKALNY: DYMKI IDĄ WYŻEJ TYLKO W MIEJSCACH KOLIZJI
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -70,29 +70,51 @@ function updateBuildingUI() {
     }
   });
 
-  // 2. Sprawdzamy, czy dymki na siebie nachodzą (prosta detekcja kolizji prostokątów)
-  // Jeśli użytkownik mocno przybliżył (np. zoom > 1.3), wymuszamy bazowy układ blisko dachów.
-  // W przeciwnym razie sprawdzamy kolizje i rozdzielamy na 3 rzędy.
+  // Jeśli użytkownik mocno przybliżył, wymuszamy bazowy układ nisko nad dachami
   const isZoomedIn = currentZoom > 1.2;
 
-  buildingItems.forEach((item, index) => {
+  // Sortujemy budynki od lewej do prawej na podstawie ich pozycji na scenie
+  const sortedItems = [...buildingItems].sort((a, b) => a.offsetLeft - b.offsetLeft);
+
+  // Definiujemy 3 poziomy wysokości (rzędy) w pikselach ekranu
+  const rowOffsets = [30, 105, 180];
+  const rowIntervals = [[], [], []]; // do śledzenia zajętości poziomej w rzędach
+  const cardWidth = 190; // szacowana szerokość dymku z zapasem
+
+  sortedItems.forEach(item => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
+    const left = item.offsetLeft;
+    const right = left + cardWidth;
+
+    let assignedRow = 0;
+
+    if (!isZoomedIn) {
+      // Szukamy pierwszego rzędu od dołu, w którym nie ma kolizji w poziomie
+      for (let r = 0; r < rowOffsets.length; r++) {
+        let hasOverlap = false;
+        for (const interval of rowIntervals[r]) {
+          if (!(right + 15 < interval.left || left - 15 > interval.right)) {
+            hasOverlap = true;
+            break;
+          }
+        }
+        if (!hasOverlap) {
+          assignedRow = r;
+          break;
+        }
+        assignedRow = rowOffsets.length - 1; // jak tłok wszędzie, dajemy w najwyższy rząd
+      }
+    }
+
+    // Zapisujemy zajętość w wybranym rzędzie
+    rowIntervals[assignedRow].push({ left, right });
+
+    const rowOffsetScreen = rowOffsets[assignedRow];
     const currentHeight = img.offsetHeight;
     const heightDiff = maxBuildingHeight - currentHeight;
-
-    let rowOffsetScreen = 30; // Domyślnie nisko nad dachem
-
-    if (!isZoomedIn && buildingItems.length > 1) {
-      // Dzielimy budynki dynamicznie na 3 rzędy (indeks % 3)
-      // Rząd 1: 30px, Rząd 2: 105px, Rząd 3: 180px nad najwyższym punktem
-      const rowChoice = index % 3;
-      if (rowChoice === 0) rowOffsetScreen = 30;
-      else if (rowChoice === 1) rowOffsetScreen = 105;
-      else rowOffsetScreen = 180;
-    }
 
     const rowOffsetStage = rowOffsetScreen * inverseScale;
     const totalShiftPx = heightDiff + rowOffsetStage;
@@ -135,7 +157,6 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  // Zwiększamy zapas wysokości sceny, żeby górny (trzeci) rząd nigdy nie uciął się u góry
   const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
 
   stage.style.height = neededH + 'px';
