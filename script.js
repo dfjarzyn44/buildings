@@ -6,6 +6,7 @@ let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
 let addedBuildings = new Set(); 
 
+// Wstrzykiwane style dla kart, dymków i linii przerywanych
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
@@ -20,8 +21,44 @@ injectedStyles.innerHTML = `
     z-index: 10; 
     pointer-events: none; 
   }
+  .building-item {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+  }
   .building-ui {
-    transition: transform 0.15s ease-out;
+    position: absolute;
+    left: 50%;
+    transform-origin: bottom center;
+    z-index: 10;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: transform 0.05s ease-out;
+  }
+  .building-info {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 6px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    text-align: center;
+    font-size: 13px;
+    line-height: 1.3;
+    color: #333;
+  }
+  .building-name { font-weight: bold; margin-bottom: 2px; }
+  .building-height { color: #555; font-size: 12px; }
+  .building-years { color: #777; font-size: 11px; }
+  .leader-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    border-left: 2px dashed #777;
+    pointer-events: none;
+    z-index: 4;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -49,7 +86,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// UKŁAD DWURZĘDOWY NAD NAJWYŻSZYM BUDYNKIEM
+// AKTUALIZACJA POZYCJI DYMKÓW I LINII PRZERYWANYCH
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -61,7 +98,7 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Znajdujemy maksymalną wysokość spośród dodanych budynków (w px)
+  // 1. Znajdujemy maksymalną wysokość obiektu na scenie (w px)
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
@@ -70,25 +107,30 @@ function updateBuildingUI() {
     }
   });
 
-  // 2. Pozycjonujemy każdy dymek w rzędzie 1 lub 2 powyżej naj wyższego punktu
+  // 2. Pozycjonujemy naprzemiennie w 2 rzędach z wyliczeniem linii
   buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
+    const line = item.querySelector('.leader-line');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
     const currentHeight = img.offsetHeight;
-    
-    // Różnica wysokości między tym budynkiem a naj wyższym na scenie
     const heightDiff = maxBuildingHeight - currentHeight;
 
-    // Odstęp od czubka najwyższego budynku: Rząd 1 (dół) vs Rząd 2 (góra)
-    const rowOffset = (index % 2 === 0) ? 20 : 95; 
-    
-    // Całkowity dystans, o jaki dymek musi powędrować w górę od swojego czubka
+    // Rząd 1: 30px nad naj wyższym budynkiem
+    // Rząd 2: 150px nad naj wyższym budynkiem (120px różnicy eliminuje nachodzenie dymków)
+    const rowOffset = (index % 2 === 0) ? 30 : 150; 
     const totalShiftPx = heightDiff + rowOffset;
 
-    const localY = -totalShiftPx * currentZoom;
-    ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
+    // Pozycja dymka względem szczytu zdjęcia budynku
+    ui.style.bottom = `calc(100% + ${totalShiftPx}px)`;
+    ui.style.transform = `translateX(-50%) scale(${inverseScale})`;
+
+    // Długość i pozycja przerywanej kreski
+    if (line) {
+      line.style.bottom = '100%';
+      line.style.height = `${totalShiftPx}px`;
+    }
   });
 }
 
@@ -101,11 +143,11 @@ function toggleFullscreen() {
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
     document.body.classList.add('no-scroll');
-    btn.innerText = " Exit Canvas";
+    if (btn) btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
     document.body.classList.remove('no-scroll');
-    btn.innerText = " Open Interactive Canvas";
+    if (btn) btn.innerText = " Open Interactive Canvas";
   }
 
   fitToStage();
@@ -125,7 +167,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1100) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 1300) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -502,6 +544,7 @@ function addToStage(building) {
         ${uiContent}
       </div>
     </div>
+    <div class="leader-line"></div>
     <img src="${building.image_2d}" alt="${building.name}">
   `;
 
