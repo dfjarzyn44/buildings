@@ -49,7 +49,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// INTELIGENTNY UKŁAD LOKALNY: DYMKI IDĄ WYŻEJ TYLKO W MIEJSCACH KOLIZJI
+// POPRAWIONY UKŁAD: BAZUJE NA KOLEJNOŚCI W DOM ORAZ BEZPIECZNYCH ODSTĘPACH
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -70,29 +70,25 @@ function updateBuildingUI() {
     }
   });
 
-  // Jeśli użytkownik mocno przybliżył, wymuszamy bazowy układ nisko nad dachami
   const isZoomedIn = currentZoom > 1.2;
-
-  // Sortujemy budynki od lewej do prawej na podstawie ich pozycji na scenie
-  const sortedItems = [...buildingItems].sort((a, b) => a.offsetLeft - b.offsetLeft);
 
   // Definiujemy 3 poziomy wysokości (rzędy) w pikselach ekranu
   const rowOffsets = [30, 105, 180];
-  const rowIntervals = [[], [], []]; // do śledzenia zajętości poziomej w rzędach
-  const cardWidth = 190; // szacowana szerokość dymku z zapasem
+  const rowIntervals = [[], [], []]; 
+  const cardWidth = 190; 
 
-  sortedItems.forEach(item => {
+  buildingItems.forEach(item => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const left = item.offsetLeft;
+    // Używamy bezpiecznego pobierania pozycji poziomej
+    const left = item.offsetLeft || 0;
     const right = left + cardWidth;
 
     let assignedRow = 0;
 
     if (!isZoomedIn) {
-      // Szukamy pierwszego rzędu od dołu, w którym nie ma kolizji w poziomie
       for (let r = 0; r < rowOffsets.length; r++) {
         let hasOverlap = false;
         for (const interval of rowIntervals[r]) {
@@ -105,11 +101,10 @@ function updateBuildingUI() {
           assignedRow = r;
           break;
         }
-        assignedRow = rowOffsets.length - 1; // jak tłok wszędzie, dajemy w najwyższy rząd
+        assignedRow = rowOffsets.length - 1;
       }
     }
 
-    // Zapisujemy zajętość w wybranym rzędzie
     rowIntervals[assignedRow].push({ left, right });
 
     const rowOffsetScreen = rowOffsets[assignedRow];
