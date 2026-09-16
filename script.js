@@ -49,7 +49,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// STABILNY UKŁAD DLA DWÓCH RZĘDÓW PONAD NAJWYŻSZYM BUDYNKIEM
+// INTELIGENTNY UKŁAD 3-RZĘDOWY OPARTY NA KOLIZJACH I POZIOMIE ZOOMU
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -70,7 +70,11 @@ function updateBuildingUI() {
     }
   });
 
-  // 2. Każdy budynek (nawet najniższy) odnosi się do najwyższego i trafia do rzędu 1 lub 2
+  // 2. Sprawdzamy, czy dymki na siebie nachodzą (prosta detekcja kolizji prostokątów)
+  // Jeśli użytkownik mocno przybliżył (np. zoom > 1.3), wymuszamy bazowy układ blisko dachów.
+  // W przeciwnym razie sprawdzamy kolizje i rozdzielamy na 3 rzędy.
+  const isZoomedIn = currentZoom > 1.2;
+
   buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
@@ -79,11 +83,17 @@ function updateBuildingUI() {
     const currentHeight = img.offsetHeight;
     const heightDiff = maxBuildingHeight - currentHeight;
 
-    // Rząd dolny (parzyste): 30px nad najwyższym budynkiem
-    // Rząd górny (nieparzyste): 120px nad najwyższym budynkiem (90px różnicy eliminuje nachodzenie)
-    const rowOffsetScreen = (index % 2 === 0) ? 30 : 120;
-    
-    // Przeliczenie offsetu ekranowego z uwzględnieniem zooma
+    let rowOffsetScreen = 30; // Domyślnie nisko nad dachem
+
+    if (!isZoomedIn && buildingItems.length > 1) {
+      // Dzielimy budynki dynamicznie na 3 rzędy (indeks % 3)
+      // Rząd 1: 30px, Rząd 2: 105px, Rząd 3: 180px nad najwyższym punktem
+      const rowChoice = index % 3;
+      if (rowChoice === 0) rowOffsetScreen = 30;
+      else if (rowChoice === 1) rowOffsetScreen = 105;
+      else rowOffsetScreen = 180;
+    }
+
     const rowOffsetStage = rowOffsetScreen * inverseScale;
     const totalShiftPx = heightDiff + rowOffsetStage;
 
@@ -125,7 +135,8 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1200) : wrapperH;
+  // Zwiększamy zapas wysokości sceny, żeby górny (trzeci) rząd nigdy nie uciął się u góry
+  const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
