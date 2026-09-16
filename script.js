@@ -76,7 +76,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// UKŁAD DWURZĘDOWY ZE STAŁYM ODSTĘPEM EKRANOWYM
+// STABILNY UKŁAD DWURZĘDOWY DLA WSZYSTKICH BUDYNKÓW
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -88,33 +88,29 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Znajdujemy naj wyższy budynek na scenie
+  // 1. Precyzyjne ustalenie maksymalnej wysokości budynku na scenie
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
-    const img = item.querySelector('img');
     const hM = parseFloat(item.dataset.heightM) || 0;
-    const itemH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
+    const itemH = hM * PIXELS_PER_METER;
     if (itemH > maxBuildingHeight) {
       maxBuildingHeight = itemH;
     }
   });
 
-  // 2. Pozycjonujemy dymki ze stałą różnicą pikseli na EKRANIE niezależnie od zoomu
+  // 2. Wyrównanie każdego dymku do dwóch rzędów powyżej najwyższego punktu
   buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
-    const img = item.querySelector('img');
     if (!ui) return;
 
     const hM = parseFloat(item.dataset.heightM) || 0;
-    const currentH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
+    const currentH = hM * PIXELS_PER_METER;
     
-    // Różnica wysokości w pikselach sceny
+    // Różnica wysokości względem najwyższego budynku
     const heightDiff = maxBuildingHeight - currentH;
 
-    // Stały odstęp ekranowy: Rząd 0 = 20px, Rząd 1 = 90px wyżej na ekranie
-    const rowOffsetScreen = (index % 2 === 0) ? 20 : 90; 
-    
-    // Przeliczenie odstępu ekranowego na układ sceny
+    // Dwa rzędy ze stałym, dużym odstępem na ekranie (35px i 130px), niezależnym od zoomu
+    const rowOffsetScreen = (index % 2 === 0) ? 35 : 130; 
     const rowOffsetStage = rowOffsetScreen * inverseScale;
     const totalShiftPx = heightDiff + rowOffsetStage;
 
@@ -150,9 +146,8 @@ function updateStageHeight() {
   let maxBHeight = 0;
 
   buildingItems.forEach(item => {
-    const img = item.querySelector('img');
     const hM = parseFloat(item.dataset.heightM) || 0;
-    const itemH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
+    const itemH = hM * PIXELS_PER_METER;
     if (itemH > maxBHeight) {
       maxBHeight = itemH;
     }
