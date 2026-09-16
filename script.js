@@ -27,7 +27,7 @@ injectedStyles.innerHTML = `
     display: flex !important;
     flex-direction: row !important;
     align-items: flex-end !important;
-    gap: 50px !important;
+    gap: 40px !important;
     position: relative;
   }
   .building-item {
@@ -63,7 +63,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// UKŁAD WIELORZĘDOWY OPARTY NA KOLIZJACH POZIOMYCH
+// STABILNY UKŁAD 3-RZĘDOWY (GWARANCJA ROZKŁADU)
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -85,42 +85,22 @@ function updateBuildingUI() {
 
   const isZoomedIn = currentZoom > 1.2;
 
-  const rowOffsets = [30, 105, 180];
-  const rowIntervals = [[], [], []]; 
-  const cardWidth = 190; 
-
-  buildingItems.forEach(item => {
+  buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const left = item.offsetLeft || 0;
-    const right = left + cardWidth;
-
-    let assignedRow = 0;
-
-    if (!isZoomedIn) {
-      for (let r = 0; r < rowOffsets.length; r++) {
-        let hasOverlap = false;
-        for (const interval of rowIntervals[r]) {
-          if (!(right + 15 < interval.left || left - 15 > interval.right)) {
-            hasOverlap = true;
-            break;
-          }
-        }
-        if (!hasOverlap) {
-          assignedRow = r;
-          break;
-        }
-        assignedRow = rowOffsets.length - 1;
-      }
-    }
-
-    rowIntervals[assignedRow].push({ left, right });
-
-    const rowOffsetScreen = rowOffsets[assignedRow];
     const currentHeight = img.offsetHeight;
     const heightDiff = maxBuildingHeight - currentHeight;
+
+    let rowOffsetScreen = 30; 
+
+    if (!isZoomedIn && buildingItems.length > 1) {
+      const rowChoice = index % 3;
+      if (rowChoice === 0) rowOffsetScreen = 30;
+      else if (rowChoice === 1) rowOffsetScreen = 105;
+      else rowOffsetScreen = 180;
+    }
 
     const rowOffsetStage = rowOffsetScreen * inverseScale;
     const totalShiftPx = heightDiff + rowOffsetStage;
@@ -138,7 +118,6 @@ function toggleFullscreen() {
 
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
-    // Usunięto blokadę body.no-scroll, żeby nie psuć robienia screenów
     btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
