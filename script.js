@@ -21,7 +21,7 @@ injectedStyles.innerHTML = `
     pointer-events: none; 
   }
   .building-ui {
-    transition: transform 0.15s ease-out;
+    transition: transform 0.1s ease-out;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -49,23 +49,121 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// TUTAJ ZMIANA: Naprzemienne układanie dymków (góra-dół) + skalowanie
+// Sprawdzanie nachodzenia dwóch obszarów na ekranie
+function isOverlapping(r1, r2, padding = 4) {
+  return !(
+    r1.right < (r2.left - padding) ||
+    r1.left > (r2.right + padding) ||
+    r1.bottom < (r2.top - padding) ||
+    r1.top > (r2.bottom + padding)
+  );
+}
+
+// Dwuetapowa detekcja kolizji dymków z budynkami oraz innymi dymkami
 function updateBuildingUI() {
-  const gridLabels = document.querySelectorAll('.grid-label');
   const inverseScale = 1 / currentZoom;
 
-  const buildingItems = document.querySelectorAll('#stage .building-item');
-  buildingItems.forEach((item, index) => {
+  const gridLabels = document.querySelectorAll('.grid-label');
+  gridLabels.forEach(label => {
+    label.style.transform = `scale(${inverseScale})`;
+  });
+
+  const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
+  if (buildingItems.length === 0) return;
+
+  // Krok A: Reset pozycji przed pomiarem
+  buildingItems.forEach(item => {
     const ui = item.querySelector('.building-ui');
     if (ui) {
-      // Budynki nieparzyste (index % 2 !== 0) wędrują wyżej o 65px
-      const staggerY = (index % 2 === 0) ? 0 : -65;
-      ui.style.transform = `scale(${inverseScale}) translateY(${staggerY}px)`;
+      ui.style.transform = `scale(${inverseScale})`;
     }
   });
 
-  gridLabels.forEach(label => {
-    label.style.transform = `scale(${inverseScale})`;
+  // Krok B: Pobranie dokładnych wymiarów i pozycji na ekranie
+  const nodesData = buildingItems.map(item => {
+    const img = item.querySelector('img');
+    const ui = item.querySelector('.building-ui');
+    if (!img || !ui) return null;
+
+    const imgRect = img.getBoundingClientRect();
+    const uiRect = ui.getBoundingClientRect();
+
+    return {
+      ui,
+      imgRect,
+      uiWidth: uiRect.width,
+      uiHeight: uiRect.height,
+      centerX: imgRect.left + (imgRect.width / 2),
+      baseTop: imgRect.top - uiRect.height - 6
+    };
+  }).filter(Boolean);
+
+  const placedLabels = [];
+
+  // Krok C: Przesuwanie dymków w górę przy wykryciu kolizji
+  nodesData.forEach((node, idx) => {
+    let currentTop = node.baseTop;
+    let currentBottom = currentTop + node.uiHeight;
+    let currentLeft = node.centerX - (node.uiWidth / 2);
+    let currentRight = node.centerX + (node.uiWidth / 2);
+
+    let extraShiftScreenPx = 0;
+    let collision = true;
+    let attempts = 0;
+
+    const stepPx = node.uiHeight + 6;
+
+    while (collision && attempts < 10) {
+      collision = false;
+
+      const testRect = {
+        left: currentLeft,
+        right: currentRight,
+        top: currentTop - extraShiftScreenPx,
+        bottom: currentBottom - extraShiftScreenPx
+      };
+
+      for (const prevLabel of placedLabels) {
+        if (isOverlapping(testRect, prevLabel, 4)) {
+          collision = true;
+          break;
+        }
+      }
+
+      if (!collision) {
+        for (let i = 0; i < nodesData.length; i++) {
+          if (i === idx) continue;
+          const otherImg = nodesData[i].imgRect;
+
+          const buildingHitBox = {
+            left: otherImg.left + 2,
+            right: otherImg.right - 2,
+            top: otherImg.top,
+            bottom: otherImg.bottom
+          };
+
+          if (isOverlapping(testRect, buildingHitBox, 2)) {
+            collision = true;
+            break;
+          }
+        }
+      }
+
+      if (collision) {
+        extraShiftScreenPx += stepPx;
+        attempts++;
+      }
+    }
+
+    placedLabels.push({
+      left: currentLeft,
+      right: currentRight,
+      top: currentTop - extraShiftScreenPx,
+      bottom: currentBottom - extraShiftScreenPx
+    });
+
+    const localY = -extraShiftScreenPx * currentZoom;
+    node.ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
 }
 
@@ -440,7 +538,6 @@ function removeBuilding(name) {
   fitToStage();
 }
 
-// TUTAJ ZMIANA: Czyste formatowanie dymka (bez niepotrzebnych słów i bez "N/A")
 function addToStage(building) {
   if (addedBuildings.has(building.name)) return;
   addedBuildings.add(building.name);
