@@ -20,36 +20,9 @@ injectedStyles.innerHTML = `
     z-index: 10; 
     pointer-events: none; 
   }
-  .building-item {
-    position: relative;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-  }
   .building-ui {
-    position: absolute;
-    left: 50%;
-    transform-origin: bottom center;
-    z-index: 10;
-    white-space: nowrap;
-    pointer-events: none;
-    transition: transform 0.05s ease-out;
+    transition: transform 0.1s ease-out;
   }
-  .building-info {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    padding: 6px 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    text-align: center;
-    font-size: 13px;
-    line-height: 1.3;
-    color: #333;
-  }
-  .building-name { font-weight: bold; margin-bottom: 2px; }
-  .building-height { color: #555; font-size: 12px; }
-  .building-years { color: #777; font-size: 11px; }
 `;
 document.head.appendChild(injectedStyles);
 
@@ -76,7 +49,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// STABILNY UKŁAD DWURZĘDOWY DLA WSZYSTKICH BUDYNKÓW
+// STABILNY UKŁAD DLA DWÓCH RZĘDÓW PONAD NAJWYŻSZYM BUDYNKIEM
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -88,34 +61,34 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Precyzyjne ustalenie maksymalnej wysokości budynku na scenie
+  // 1. Znajdujemy najwyższy budynek na scenie w pikselach
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
-    const hM = parseFloat(item.dataset.heightM) || 0;
-    const itemH = hM * PIXELS_PER_METER;
-    if (itemH > maxBuildingHeight) {
-      maxBuildingHeight = itemH;
+    const img = item.querySelector('img');
+    if (img && img.offsetHeight > maxBuildingHeight) {
+      maxBuildingHeight = img.offsetHeight;
     }
   });
 
-  // 2. Wyrównanie każdego dymku do dwóch rzędów powyżej najwyższego punktu
+  // 2. Każdy budynek (nawet najniższy) odnosi się do najwyższego i trafia do rzędu 1 lub 2
   buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
-    if (!ui) return;
+    const img = item.querySelector('img');
+    if (!ui || !img) return;
 
-    const hM = parseFloat(item.dataset.heightM) || 0;
-    const currentH = hM * PIXELS_PER_METER;
+    const currentHeight = img.offsetHeight;
+    const heightDiff = maxBuildingHeight - currentHeight;
+
+    // Rząd dolny (parzyste): 30px nad najwyższym budynkiem
+    // Rząd górny (nieparzyste): 120px nad najwyższym budynkiem (90px różnicy eliminuje nachodzenie)
+    const rowOffsetScreen = (index % 2 === 0) ? 30 : 120;
     
-    // Różnica wysokości względem najwyższego budynku
-    const heightDiff = maxBuildingHeight - currentH;
-
-    // Dwa rzędy ze stałym, dużym odstępem na ekranie (35px i 130px), niezależnym od zoomu
-    const rowOffsetScreen = (index % 2 === 0) ? 35 : 130; 
+    // Przeliczenie offsetu ekranowego z uwzględnieniem zooma
     const rowOffsetStage = rowOffsetScreen * inverseScale;
     const totalShiftPx = heightDiff + rowOffsetStage;
 
-    ui.style.bottom = `calc(100% + ${totalShiftPx}px)`;
-    ui.style.transform = `translateX(-50%) scale(${inverseScale})`;
+    const localY = -totalShiftPx * currentZoom;
+    ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
 }
 
@@ -128,11 +101,11 @@ function toggleFullscreen() {
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
     document.body.classList.add('no-scroll');
-    if (btn) btn.innerText = " Exit Canvas";
+    btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
     document.body.classList.remove('no-scroll');
-    if (btn) btn.innerText = " Open Interactive Canvas";
+    btn.innerText = " Open Interactive Canvas";
   }
 
   fitToStage();
@@ -146,15 +119,13 @@ function updateStageHeight() {
   let maxBHeight = 0;
 
   buildingItems.forEach(item => {
-    const hM = parseFloat(item.dataset.heightM) || 0;
-    const itemH = hM * PIXELS_PER_METER;
-    if (itemH > maxBHeight) {
-      maxBHeight = itemH;
+    if (item.offsetHeight > maxBHeight) {
+      maxBHeight = item.offsetHeight;
     }
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1400) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 1200) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -500,7 +471,6 @@ function addToStage(building) {
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
-  item.dataset.heightM = building.height_m || 0;
 
   let heightStr = '';
   if (building.height_m && building.height_m !== 'N/A') {
