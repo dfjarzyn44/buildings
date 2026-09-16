@@ -6,7 +6,6 @@ let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
 let addedBuildings = new Set(); 
 
-// Stylizowanie kart oraz dymków (BEZ ŻADNYCH KRESEK)
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
@@ -77,7 +76,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// UKŁAD 2 RZĘDÓW NAD NAJWYŻSZYM BUDYNKIEM DLA WSZYSTKICH OBIEKTÓW
+// UKŁAD DWURZĘDOWY ZE STAŁYM ODSTĘPEM EKRANOWYM
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -89,7 +88,7 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Szukamy maksymalnej wysokości na scenie w pikselach sceny
+  // 1. Znajdujemy naj wyższy budynek na scenie
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
@@ -100,7 +99,7 @@ function updateBuildingUI() {
     }
   });
 
-  // 2. Każdy dymek (wysoki czy niski) ląduje w Rzędzie 0 lub Rzędzie 1 nad najwyższym punktem sceny
+  // 2. Pozycjonujemy dymki ze stałą różnicą pikseli na EKRANIE niezależnie od zoomu
   buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
@@ -109,13 +108,15 @@ function updateBuildingUI() {
     const hM = parseFloat(item.dataset.heightM) || 0;
     const currentH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
     
-    // Różnica wysokości między tym obiektem a najwyższym na scenie
+    // Różnica wysokości w pikselach sceny
     const heightDiff = maxBuildingHeight - currentH;
 
-    // Rząd 0 (parzyste): 40px nad naj wyższym budynkiem
-    // Rząd 1 (nieparzyste): 180px nad naj wyższym budynkiem (odstęp 140px zapobiega nakładaniu)
-    const rowOffset = (index % 2 === 0) ? 40 : 180; 
-    const totalShiftPx = heightDiff + rowOffset;
+    // Stały odstęp ekranowy: Rząd 0 = 20px, Rząd 1 = 90px wyżej na ekranie
+    const rowOffsetScreen = (index % 2 === 0) ? 20 : 90; 
+    
+    // Przeliczenie odstępu ekranowego na układ sceny
+    const rowOffsetStage = rowOffsetScreen * inverseScale;
+    const totalShiftPx = heightDiff + rowOffsetStage;
 
     ui.style.bottom = `calc(100% + ${totalShiftPx}px)`;
     ui.style.transform = `translateX(-50%) scale(${inverseScale})`;
