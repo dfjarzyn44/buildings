@@ -6,7 +6,7 @@ let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
 let addedBuildings = new Set(); 
 
-// Wstrzykiwane style dla kart, dymków i linii przerywanych
+// Stylizowanie kart oraz dymków (BEZ ŻADNYCH KRESEK)
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
@@ -51,15 +51,6 @@ injectedStyles.innerHTML = `
   .building-name { font-weight: bold; margin-bottom: 2px; }
   .building-height { color: #555; font-size: 12px; }
   .building-years { color: #777; font-size: 11px; }
-  .leader-line {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    border-left: 2px dashed #777;
-    pointer-events: none;
-    z-index: 4;
-  }
 `;
 document.head.appendChild(injectedStyles);
 
@@ -86,7 +77,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// AKTUALIZACJA POZYCJI DYMKÓW I LINII PRZERYWANYCH
+// UKŁAD 2 RZĘDÓW NAD NAJWYŻSZYM BUDYNKIEM DLA WSZYSTKICH OBIEKTÓW
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -98,39 +89,36 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Znajdujemy maksymalną wysokość obiektu na scenie (w px)
+  // 1. Szukamy maksymalnej wysokości na scenie w pikselach sceny
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
-    if (img && img.offsetHeight > maxBuildingHeight) {
-      maxBuildingHeight = img.offsetHeight;
+    const hM = parseFloat(item.dataset.heightM) || 0;
+    const itemH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
+    if (itemH > maxBuildingHeight) {
+      maxBuildingHeight = itemH;
     }
   });
 
-  // 2. Pozycjonujemy naprzemiennie w 2 rzędach z wyliczeniem linii
+  // 2. Każdy dymek (wysoki czy niski) ląduje w Rzędzie 0 lub Rzędzie 1 nad najwyższym punktem sceny
   buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
-    const line = item.querySelector('.leader-line');
     const img = item.querySelector('img');
-    if (!ui || !img) return;
+    if (!ui) return;
 
-    const currentHeight = img.offsetHeight;
-    const heightDiff = maxBuildingHeight - currentHeight;
+    const hM = parseFloat(item.dataset.heightM) || 0;
+    const currentH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
+    
+    // Różnica wysokości między tym obiektem a najwyższym na scenie
+    const heightDiff = maxBuildingHeight - currentH;
 
-    // Rząd 1: 30px nad naj wyższym budynkiem
-    // Rząd 2: 150px nad naj wyższym budynkiem (120px różnicy eliminuje nachodzenie dymków)
-    const rowOffset = (index % 2 === 0) ? 30 : 150; 
+    // Rząd 0 (parzyste): 40px nad naj wyższym budynkiem
+    // Rząd 1 (nieparzyste): 180px nad naj wyższym budynkiem (odstęp 140px zapobiega nakładaniu)
+    const rowOffset = (index % 2 === 0) ? 40 : 180; 
     const totalShiftPx = heightDiff + rowOffset;
 
-    // Pozycja dymka względem szczytu zdjęcia budynku
     ui.style.bottom = `calc(100% + ${totalShiftPx}px)`;
     ui.style.transform = `translateX(-50%) scale(${inverseScale})`;
-
-    // Długość i pozycja przerywanej kreski
-    if (line) {
-      line.style.bottom = '100%';
-      line.style.height = `${totalShiftPx}px`;
-    }
   });
 }
 
@@ -161,13 +149,16 @@ function updateStageHeight() {
   let maxBHeight = 0;
 
   buildingItems.forEach(item => {
-    if (item.offsetHeight > maxBHeight) {
-      maxBHeight = item.offsetHeight;
+    const img = item.querySelector('img');
+    const hM = parseFloat(item.dataset.heightM) || 0;
+    const itemH = (img && img.offsetHeight > 0) ? img.offsetHeight : (hM * PIXELS_PER_METER);
+    if (itemH > maxBHeight) {
+      maxBHeight = itemH;
     }
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1300) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 1400) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -513,6 +504,7 @@ function addToStage(building) {
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
+  item.dataset.heightM = building.height_m || 0;
 
   let heightStr = '';
   if (building.height_m && building.height_m !== 'N/A') {
@@ -544,7 +536,6 @@ function addToStage(building) {
         ${uiContent}
       </div>
     </div>
-    <div class="leader-line"></div>
     <img src="${building.image_2d}" alt="${building.name}">
   `;
 
