@@ -21,7 +21,7 @@ injectedStyles.innerHTML = `
     pointer-events: none; 
   }
   .building-ui {
-    transition: transform 0.1s ease-out;
+    transition: transform 0.15s ease-out;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -49,17 +49,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// Sprawdzanie nachodzenia dwóch obszarów na ekranie
-function isOverlapping(r1, r2, padding = 4) {
-  return !(
-    r1.right < (r2.left - padding) ||
-    r1.left > (r2.right + padding) ||
-    r1.bottom < (r2.top - padding) ||
-    r1.top > (r2.bottom + padding)
-  );
-}
-
-// Dwuetapowa detekcja kolizji dymków z budynkami oraz innymi dymkami
+// UKŁAD DWURZĘDOWY NAD NAJWYŻSZYM BUDYNKIEM
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -71,99 +61,34 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // Krok A: Reset pozycji przed pomiarem
+  // 1. Znajdujemy maksymalną wysokość spośród dodanych budynków (w px)
+  let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
-    const ui = item.querySelector('.building-ui');
-    if (ui) {
-      ui.style.transform = `scale(${inverseScale})`;
+    const img = item.querySelector('img');
+    if (img && img.offsetHeight > maxBuildingHeight) {
+      maxBuildingHeight = img.offsetHeight;
     }
   });
 
-  // Krok B: Pobranie dokładnych wymiarów i pozycji na ekranie
-  const nodesData = buildingItems.map(item => {
-    const img = item.querySelector('img');
+  // 2. Pozycjonujemy każdy dymek w rzędzie 1 lub 2 powyżej naj wyższego punktu
+  buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
-    if (!img || !ui) return null;
+    const img = item.querySelector('img');
+    if (!ui || !img) return;
 
-    const imgRect = img.getBoundingClientRect();
-    const uiRect = ui.getBoundingClientRect();
+    const currentHeight = img.offsetHeight;
+    
+    // Różnica wysokości między tym budynkiem a naj wyższym na scenie
+    const heightDiff = maxBuildingHeight - currentHeight;
 
-    return {
-      ui,
-      imgRect,
-      uiWidth: uiRect.width,
-      uiHeight: uiRect.height,
-      centerX: imgRect.left + (imgRect.width / 2),
-      baseTop: imgRect.top - uiRect.height - 6
-    };
-  }).filter(Boolean);
+    // Odstęp od czubka najwyższego budynku: Rząd 1 (dół) vs Rząd 2 (góra)
+    const rowOffset = (index % 2 === 0) ? 20 : 95; 
+    
+    // Całkowity dystans, o jaki dymek musi powędrować w górę od swojego czubka
+    const totalShiftPx = heightDiff + rowOffset;
 
-  const placedLabels = [];
-
-  // Krok C: Przesuwanie dymków w górę przy wykryciu kolizji
-  nodesData.forEach((node, idx) => {
-    let currentTop = node.baseTop;
-    let currentBottom = currentTop + node.uiHeight;
-    let currentLeft = node.centerX - (node.uiWidth / 2);
-    let currentRight = node.centerX + (node.uiWidth / 2);
-
-    let extraShiftScreenPx = 0;
-    let collision = true;
-    let attempts = 0;
-
-    const stepPx = node.uiHeight + 6;
-
-    while (collision && attempts < 10) {
-      collision = false;
-
-      const testRect = {
-        left: currentLeft,
-        right: currentRight,
-        top: currentTop - extraShiftScreenPx,
-        bottom: currentBottom - extraShiftScreenPx
-      };
-
-      for (const prevLabel of placedLabels) {
-        if (isOverlapping(testRect, prevLabel, 4)) {
-          collision = true;
-          break;
-        }
-      }
-
-      if (!collision) {
-        for (let i = 0; i < nodesData.length; i++) {
-          if (i === idx) continue;
-          const otherImg = nodesData[i].imgRect;
-
-          const buildingHitBox = {
-            left: otherImg.left + 2,
-            right: otherImg.right - 2,
-            top: otherImg.top,
-            bottom: otherImg.bottom
-          };
-
-          if (isOverlapping(testRect, buildingHitBox, 2)) {
-            collision = true;
-            break;
-          }
-        }
-      }
-
-      if (collision) {
-        extraShiftScreenPx += stepPx;
-        attempts++;
-      }
-    }
-
-    placedLabels.push({
-      left: currentLeft,
-      right: currentRight,
-      top: currentTop - extraShiftScreenPx,
-      bottom: currentBottom - extraShiftScreenPx
-    });
-
-    const localY = -extraShiftScreenPx * currentZoom;
-    node.ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
+    const localY = -totalShiftPx * currentZoom;
+    ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
 }
 
@@ -200,7 +125,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 950) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 1100) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
