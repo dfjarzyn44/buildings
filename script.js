@@ -9,7 +9,7 @@ let addedBuildings = new Set();
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stage {
-    gap: 140px !important;          /* Odstęp pomiędzy kolejnymi budynkami */
+    gap: 280px !important;          /* Dwukrotnie większy odstęp pomiędzy budynkami (zamiast 140px) */
   }
   .stage-wrapper.fullscreen {
     touch-action: auto !important;  /* Odblokowanie gestów systemowych */
@@ -485,7 +485,7 @@ function addToStage(building) {
   if (!document.getElementById('stage-spacer')) {
     const spacer = document.createElement('div');
     spacer.id = 'stage-spacer';
-    spacer.style.cssText = 'width: 120px; flex-shrink: 0; height: 1px;';
+    spacer.style.cssText = 'width: 240px; flex-shrink: 0; height: 1px;'; /* Dwukrotnie większy margines z lewej strony (240px) */
     stage.prepend(spacer);
   }
 
