@@ -23,6 +23,17 @@ injectedStyles.innerHTML = `
   .building-ui {
     transition: transform 0.1s ease-out;
   }
+  .building-ui.has-line::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1.5px;
+    height: var(--line-height, 0px);
+    background-color: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
   #stage {
     display: flex !important;
     flex-direction: row !important;
@@ -63,7 +74,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// STABILNY UKŁAD 3-RZĘDOWY (GWARANCJA ROZKŁADU)
+// INTELIGENTNY SYSTEM KOLIZJI (Dymki vs Budynki vs Dymki)
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -72,40 +83,115 @@ function updateBuildingUI() {
     label.style.transform = `scale(${inverseScale})`;
   });
 
-  const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
+  const stage = document.getElementById('stage');
+  const buildingItems = Array.from(stage.querySelectorAll('.building-item'));
   if (buildingItems.length === 0) return;
 
-  let maxBuildingHeight = 0;
+  // 1. Definiujemy budynki jako przeszkody (współrzędne Stage, Y od dołu)
+  const obstacles = [];
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
-    if (img && img.offsetHeight > maxBuildingHeight) {
-      maxBuildingHeight = img.offsetHeight;
-    }
+    if (!img) return;
+    
+    const imgW = img.offsetWidth;
+    const imgH = img.offsetHeight;
+    const itemLeft = item.offsetLeft;
+    const imgLeft = itemLeft + (item.offsetWidth - imgW) / 2;
+    
+    obstacles.push({
+      left: imgLeft,
+      right: imgLeft + imgW,
+      bottom: 0,
+      top: imgH
+    });
   });
 
-  const isZoomedIn = currentZoom > 1.2;
+  const placedBubbles = [];
+  // Dynamiczne odstępy wizualne kompensujące przybliżenie kamery
+  const baseGap = 20 * inverseScale; 
+  const step = 20 * inverseScale;
+  const marginX = 15 * inverseScale;
+  const marginY = 15 * inverseScale;
 
-  buildingItems.forEach((item, index) => {
+  buildingItems.forEach((item) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const currentHeight = img.offsetHeight;
-    const heightDiff = maxBuildingHeight - currentHeight;
+    const imgH = img.offsetHeight;
+    const itemLeft = item.offsetLeft;
+    const itemCenter = itemLeft + item.offsetWidth / 2;
+    
+    const scaledUiW = ui.offsetWidth * inverseScale;
+    const scaledUiH = ui.offsetHeight * inverseScale;
+    
+    const uiLeft = itemCenter - scaledUiW / 2;
+    const uiRight = uiLeft + scaledUiW;
+    
+    let yOffset = baseGap;
+    let hasCollision = true;
+    let maxIterations = 150; // Zabezpieczenie przed nieskończoną pętlą
+    
+    while (hasCollision && maxIterations > 0) {
+      hasCollision = false;
+      maxIterations--;
+      
+      const bubbleBottom = imgH + yOffset;
+      const bubbleTop = bubbleBottom + scaledUiH;
+      
+      const testBox = {
+        left: uiLeft - marginX,
+        right: uiRight + marginX,
+        bottom: bubbleBottom - marginY,
+        top: bubbleTop + marginY
+      };
 
-    let rowOffsetScreen = 30; 
+      // Sprawdzanie kolizji z bryłami budynków
+      for (const obs of obstacles) {
+        if (!(testBox.right < obs.left || 
+              testBox.left > obs.right || 
+              testBox.top < obs.bottom || 
+              testBox.bottom > obs.top)) {
+          hasCollision = true;
+          break;
+        }
+      }
 
-    if (!isZoomedIn && buildingItems.length > 1) {
-      const rowChoice = index % 3;
-      if (rowChoice === 0) rowOffsetScreen = 30;
-      else if (rowChoice === 1) rowOffsetScreen = 105;
-      else rowOffsetScreen = 180;
+      // Sprawdzanie kolizji z już ustawionymi dymkami
+      if (!hasCollision) {
+        for (const bubble of placedBubbles) {
+          if (!(testBox.right < bubble.left || 
+                testBox.left > bubble.right || 
+                testBox.top < bubble.bottom || 
+                testBox.bottom > bubble.top)) {
+            hasCollision = true;
+            break;
+          }
+        }
+      }
+
+      if (hasCollision) {
+        yOffset += step;
+      }
     }
 
-    const rowOffsetStage = rowOffsetScreen * inverseScale;
-    const totalShiftPx = heightDiff + rowOffsetStage;
+    placedBubbles.push({
+      left: uiLeft,
+      right: uiRight,
+      bottom: imgH + yOffset,
+      top: imgH + yOffset + scaledUiH
+    });
 
-    const localY = -totalShiftPx * currentZoom;
+    // Sterowanie linią pomocniczą
+    if (yOffset > baseGap + (5 * inverseScale)) {
+      ui.classList.add('has-line');
+      const lineLength = (yOffset - baseGap) * currentZoom; 
+      ui.style.setProperty('--line-height', `${lineLength}px`);
+    } else {
+      ui.classList.remove('has-line');
+    }
+
+    const localY = -yOffset * currentZoom;
     ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
 }
