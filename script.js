@@ -73,6 +73,7 @@ async function loadData() {
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
+  if (!wrapper || !stage) return;
 
   stageDim.wrapperW = wrapper.clientWidth || 1;
   stageDim.wrapperH = wrapper.clientHeight || 1;
@@ -80,115 +81,100 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// SYSTEM KOLIZJI - LINIOWO OD LEWEJ DO PRAWEJ
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
-
-  const gridLabels = document.querySelectorAll('.grid-label');
-  gridLabels.forEach(label => {
-    label.style.transform = `scale(${inverseScale})`;
-  });
-
   const stage = document.getElementById('stage');
-  let buildingItems = Array.from(stage.querySelectorAll('.building-item'));
+  if (!stage) return;
+
+  const stageRect = stage.getBoundingClientRect();
+  const buildingItems = Array.from(stage.querySelectorAll('.building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Sortujemy elementy od lewej do prawej według ich fizycznej pozycji na scenie
-  buildingItems.sort((a, b) => a.offsetLeft - b.offsetLeft);
+  // 1. Sortowanie od lewej do prawej według pozycji na ekranie
+  buildingItems.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
 
-  // 2. Tworzymy listę przeszkód ze wszystkich budynków (obrazków)
+  // 2. Odczyt obrysów budynków (obrazków) w przestrzeni sceny
   const buildingObstacles = buildingItems.map(item => {
-    const img = item.querySelector('img');
-    const imgW = img ? img.offsetWidth : item.offsetWidth;
-    const imgH = img ? img.offsetHeight : item.offsetHeight;
-    const itemLeft = item.offsetLeft;
-    const imgLeft = itemLeft + (item.offsetWidth - imgW) / 2;
-
+    const img = item.querySelector('img') || item;
+    const r = img.getBoundingClientRect();
     return {
-      left: imgLeft,
-      right: imgLeft + imgW,
-      bottom: 0,
-      top: imgH
+      left: (r.left - stageRect.left) / currentZoom,
+      right: (r.right - stageRect.left) / currentZoom,
+      top: (r.top - stageRect.top) / currentZoom,
+      bottom: (r.bottom - stageRect.top) / currentZoom
     };
   });
 
   const placedBubbles = [];
-  const baseGap = 15; // Domyślna wysokość nad dachem (px sceny)
-  const step = 10;    // Krok podnoszenia dymku w górę
-  const marginX = 8;  // Margines kolizji w poziomie
-  const marginY = 8;  // Margines kolizji w pionie
+  const baseGap = 15; 
+  const step = 6;
+  const marginX = 6;
+  const marginY = 6;
 
   buildingItems.forEach((item) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const imgH = img.offsetHeight;
-    const itemCenter = item.offsetLeft + item.offsetWidth / 2;
+    const imgRect = img.getBoundingClientRect();
+    const imgStageLeft = (imgRect.left - stageRect.left) / currentZoom;
+    const imgStageRight = (imgRect.right - stageRect.left) / currentZoom;
+    const imgStageTop = (imgRect.top - stageRect.top) / currentZoom;
+    const imgCenterX = (imgStageLeft + imgStageRight) / 2;
 
-    // Rzeczywiste wymiary dymku na scenie po skali
-    const uiW = ui.offsetWidth * inverseScale;
-    const uiH = ui.offsetHeight * inverseScale;
-
-    const uiLeft = itemCenter - uiW / 2;
-    const uiRight = uiLeft + uiW;
+    const uiWidth = ui.offsetWidth;
+    const uiHeight = ui.offsetHeight;
 
     let yOffset = baseGap;
-    let hasCollision = true;
+    let collision = true;
     let safetyCounter = 200;
 
-    while (hasCollision && safetyCounter > 0) {
-      hasCollision = false;
+    while (collision && safetyCounter > 0) {
+      collision = false;
       safetyCounter--;
 
-      const bubbleBottom = imgH + yOffset;
-      const bubbleTop = bubbleBottom + uiH;
+      const bTop = imgStageTop - yOffset - uiHeight;
+      const bBottom = imgStageTop - yOffset;
+      const bLeft = imgCenterX - (uiWidth / 2);
+      const bRight = imgCenterX + (uiWidth / 2);
 
       const testBox = {
-        left: uiLeft - marginX,
-        right: uiRight + marginX,
-        bottom: bubbleBottom - marginY,
-        top: bubbleTop + marginY
+        left: bLeft - marginX,
+        right: bRight + marginX,
+        top: bTop - marginY,
+        bottom: bBottom + marginY
       };
 
-      // Sprawdzenie kolizji ze wszystkimi budynkami
-      for (let obs of buildingObstacles) {
-        if (!(testBox.right < obs.left || 
-              testBox.left > obs.right || 
-              testBox.top < obs.bottom || 
-              testBox.bottom > obs.top)) {
-          hasCollision = true;
+      // Sprawdzenie kolizji z dachem/obrazkiem każdego budynku
+      for (const obs of buildingObstacles) {
+        if (!(testBox.right < obs.left || testBox.left > obs.right || testBox.bottom < obs.top || testBox.top > obs.bottom)) {
+          collision = true;
           break;
         }
       }
 
-      // Sprawdzenie kolizji z wcześniej postawionymi dymkami
-      if (!hasCollision) {
-        for (let bubble of placedBubbles) {
-          if (!(testBox.right < bubble.left || 
-                testBox.left > bubble.right || 
-                testBox.top < bubble.bottom || 
-                testBox.bottom > bubble.top)) {
-            hasCollision = true;
+      // Sprawdzenie kolizji z już umieszczonymi dymkami
+      if (!collision) {
+        for (const pb of placedBubbles) {
+          if (!(testBox.right < pb.left || testBox.left > pb.right || testBox.bottom < pb.top || testBox.top > pb.bottom)) {
+            collision = true;
             break;
           }
         }
       }
 
-      if (hasCollision) {
+      if (collision) {
         yOffset += step;
       }
     }
 
-    // Zapamiętujemy pozycję dymku
-    placedBubbles.push({
-      left: uiLeft,
-      right: uiRight,
-      bottom: imgH + yOffset,
-      top: imgH + yOffset + uiH
-    });
+    const finalTop = imgStageTop - yOffset - uiHeight;
+    const finalBottom = imgStageTop - yOffset;
+    const finalLeft = imgCenterX - (uiWidth / 2);
+    const finalRight = imgCenterX + (uiWidth / 2);
 
-    // Rysowanie kreski przy podniesieniu dymku
+    placedBubbles.push({ left: finalLeft, right: finalRight, top: finalTop, bottom: finalBottom });
+
     if (yOffset > baseGap + 5) {
       ui.classList.add('has-line');
       ui.style.setProperty('--line-height', `${yOffset - 5}px`);
@@ -196,7 +182,6 @@ function updateBuildingUI() {
       ui.classList.remove('has-line');
     }
 
-    // Ustawienie dymku w wyliczonym miejscu
     ui.style.transform = `translateX(-50%) translateY(${-yOffset}px) scale(${inverseScale})`;
   });
 }
@@ -209,10 +194,10 @@ function toggleFullscreen() {
 
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
-    btn.innerText = " Exit Canvas";
+    if (btn) btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
-    btn.innerText = " Open Interactive Canvas";
+    if (btn) btn.innerText = " Open Interactive Canvas";
   }
 
   fitToStage();
@@ -221,6 +206,7 @@ function toggleFullscreen() {
 function updateStageHeight() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
+  if (!wrapper || !stage) return;
   const buildingItems = stage.querySelectorAll('.building-item');
 
   let maxBHeight = 0;
@@ -271,8 +257,10 @@ function applyTransform() {
         zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
       }
 
-      document.getElementById('stage').style.transform =
-        `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
+      const stage = document.getElementById('stage');
+      if (stage) {
+        stage.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
+      }
 
       updateBuildingUI();
 
@@ -287,21 +275,21 @@ function initInteractions() {
   const stage = document.getElementById('stage');
 
   const showNamesCheckbox = document.getElementById('showNamesCheckbox');
-  if (showNamesCheckbox) {
+  if (showNamesCheckbox && stage) {
     showNamesCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-names', !e.target.checked);
     });
   }
 
   const showHeightCheckbox = document.getElementById('showHeightCheckbox');
-  if (showHeightCheckbox) {
+  if (showHeightCheckbox && stage) {
     showHeightCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-height', !e.target.checked);
     });
   }
 
   const showYearsCheckbox = document.getElementById('showYearsCheckbox');
-  if (showYearsCheckbox) {
+  if (showYearsCheckbox && stage) {
     showYearsCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-years', !e.target.checked);
     });
@@ -317,6 +305,7 @@ function initInteractions() {
   });
 
   const wrapper = document.getElementById('stageWrapper');
+  if (!wrapper) return;
 
   wrapper.addEventListener('wheel', (e) => {
     if (!isFullscreen) return;
@@ -526,6 +515,7 @@ function fitToStage() {
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
+  if (!stage) return;
   const buildingItems = stage.querySelectorAll('.building-item');
 
   if (buildingItems.length === 0) {
@@ -558,13 +548,14 @@ function fitToStage() {
 function removeBuilding(name) {
   addedBuildings.delete(name);
   const stage = document.getElementById('stage');
-  const items = stage.querySelectorAll('.building-item');
-  
-  items.forEach(item => {
-    if (item.dataset.name === name) {
-      item.remove();
-    }
-  });
+  if (stage) {
+    const items = stage.querySelectorAll('.building-item');
+    items.forEach(item => {
+      if (item.dataset.name === name) {
+        item.remove();
+      }
+    });
+  }
   
   filterData(); 
   fitToStage();
@@ -575,6 +566,7 @@ function addToStage(building) {
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
+  if (!stage) return;
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
