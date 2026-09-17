@@ -8,6 +8,15 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
+  #stage {
+    gap: 140px !important;          /* Odstęp pomiędzy budynkami */
+  }
+  .building-item:first-child {
+    margin-left: 110px !important;  /* Odsunięcie pierwszego budynku w prawo od siatki */
+  }
+  .stage-wrapper.fullscreen {
+    touch-action: auto !important;  /* Odblokowanie gestów systemowych (screenshoty) */
+  }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
   .card-remove-indicator { 
@@ -49,7 +58,6 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// INTELIGENTNY UKŁAD 3-RZĘDOWY OPARTY NA KOLIZJACH I POZIOMIE ZOOMU
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -61,7 +69,6 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Znajdujemy najwyższy budynek na scenie w pikselach
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
@@ -70,9 +77,6 @@ function updateBuildingUI() {
     }
   });
 
-  // 2. Sprawdzamy, czy dymki na siebie nachodzą (prosta detekcja kolizji prostokątów)
-  // Jeśli użytkownik mocno przybliżył (np. zoom > 1.3), wymuszamy bazowy układ blisko dachów.
-  // W przeciwnym razie sprawdzamy kolizje i rozdzielamy na 3 rzędy.
   const isZoomedIn = currentZoom > 1.2;
 
   buildingItems.forEach((item, index) => {
@@ -83,11 +87,9 @@ function updateBuildingUI() {
     const currentHeight = img.offsetHeight;
     const heightDiff = maxBuildingHeight - currentHeight;
 
-    let rowOffsetScreen = 30; // Domyślnie nisko nad dachem
+    let rowOffsetScreen = 30;
 
     if (!isZoomedIn && buildingItems.length > 1) {
-      // Dzielimy budynki dynamicznie na 3 rzędy (indeks % 3)
-      // Rząd 1: 30px, Rząd 2: 105px, Rząd 3: 180px nad najwyższym punktem
       const rowChoice = index % 3;
       if (rowChoice === 0) rowOffsetScreen = 30;
       else if (rowChoice === 1) rowOffsetScreen = 105;
@@ -135,7 +137,6 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
-  // Zwiększamy zapas wysokości sceny, żeby górny (trzeci) rząd nigdy nie uciął się u góry
   const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
 
   stage.style.height = neededH + 'px';
