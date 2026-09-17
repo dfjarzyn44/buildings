@@ -9,13 +9,10 @@ let addedBuildings = new Set();
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stage {
-    gap: 140px !important;          /* Odstęp pomiędzy budynkami */
-  }
-  .building-item:first-child {
-    margin-left: 110px !important;  /* Odsunięcie pierwszego budynku w prawo od siatki */
+    gap: 140px !important;          /* Odstęp pomiędzy kolejnymi budynkami */
   }
   .stage-wrapper.fullscreen {
-    touch-action: auto !important;  /* Odblokowanie gestów systemowych (screenshoty) */
+    touch-action: auto !important;  /* Odblokowanie gestów systemowych */
   }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
@@ -418,8 +415,7 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
-    const items = stage.querySelectorAll('.building-item');
-    items.forEach(item => item.remove());
+    stage.innerHTML = '';
   }
   addedBuildings.clear();
   filterData();
@@ -470,6 +466,11 @@ function removeBuilding(name) {
       item.remove();
     }
   });
+
+  if (addedBuildings.size === 0) {
+    const spacer = document.getElementById('stage-spacer');
+    if (spacer) spacer.remove();
+  }
   
   filterData(); 
   fitToStage();
@@ -480,6 +481,14 @@ function addToStage(building) {
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
+
+  if (!document.getElementById('stage-spacer')) {
+    const spacer = document.createElement('div');
+    spacer.id = 'stage-spacer';
+    spacer.style.cssText = 'width: 120px; flex-shrink: 0; height: 1px;';
+    stage.prepend(spacer);
+  }
+
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
