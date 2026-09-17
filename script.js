@@ -21,38 +21,7 @@ injectedStyles.innerHTML = `
     pointer-events: none; 
   }
   .building-ui {
-    position: absolute !important;
-    bottom: 100% !important;
-    left: 50% !important;
-    transform-origin: bottom center !important;
-    white-space: nowrap !important;
     transition: transform 0.1s ease-out;
-    z-index: 10;
-  }
-  .building-ui.has-line::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 1.5px;
-    height: var(--line-height, 0px);
-    background-color: rgba(0, 0, 0, 0.4);
-    pointer-events: none;
-  }
-  #stage {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-end !important;
-    gap: 40px !important;
-    position: relative;
-  }
-  .building-item {
-    position: relative !important;
-    flex-shrink: 0 !important;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -73,7 +42,6 @@ async function loadData() {
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
-  if (!wrapper || !stage) return;
 
   stageDim.wrapperW = wrapper.clientWidth || 1;
   stageDim.wrapperH = wrapper.clientHeight || 1;
@@ -81,108 +49,56 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
+// INTELIGENTNY UKŁAD 3-RZĘDOWY OPARTY NA KOLIZJACH I POZIOMIE ZOOMU
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
-  const stage = document.getElementById('stage');
-  if (!stage) return;
 
-  const stageRect = stage.getBoundingClientRect();
-  const buildingItems = Array.from(stage.querySelectorAll('.building-item'));
-  if (buildingItems.length === 0) return;
-
-  // 1. Sortowanie od lewej do prawej według pozycji na ekranie
-  buildingItems.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-
-  // 2. Odczyt obrysów budynków (obrazków) w przestrzeni sceny
-  const buildingObstacles = buildingItems.map(item => {
-    const img = item.querySelector('img') || item;
-    const r = img.getBoundingClientRect();
-    return {
-      left: (r.left - stageRect.left) / currentZoom,
-      right: (r.right - stageRect.left) / currentZoom,
-      top: (r.top - stageRect.top) / currentZoom,
-      bottom: (r.bottom - stageRect.top) / currentZoom
-    };
+  const gridLabels = document.querySelectorAll('.grid-label');
+  gridLabels.forEach(label => {
+    label.style.transform = `scale(${inverseScale})`;
   });
 
-  const placedBubbles = [];
-  const baseGap = 15; 
-  const step = 6;
-  const marginX = 6;
-  const marginY = 6;
+  const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
+  if (buildingItems.length === 0) return;
 
-  buildingItems.forEach((item) => {
+  // 1. Znajdujemy najwyższy budynek na scenie w pikselach
+  let maxBuildingHeight = 0;
+  buildingItems.forEach(item => {
+    const img = item.querySelector('img');
+    if (img && img.offsetHeight > maxBuildingHeight) {
+      maxBuildingHeight = img.offsetHeight;
+    }
+  });
+
+  // 2. Sprawdzamy, czy dymki na siebie nachodzą (prosta detekcja kolizji prostokątów)
+  // Jeśli użytkownik mocno przybliżył (np. zoom > 1.3), wymuszamy bazowy układ blisko dachów.
+  // W przeciwnym razie sprawdzamy kolizje i rozdzielamy na 3 rzędy.
+  const isZoomedIn = currentZoom > 1.2;
+
+  buildingItems.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const imgRect = img.getBoundingClientRect();
-    const imgStageLeft = (imgRect.left - stageRect.left) / currentZoom;
-    const imgStageRight = (imgRect.right - stageRect.left) / currentZoom;
-    const imgStageTop = (imgRect.top - stageRect.top) / currentZoom;
-    const imgCenterX = (imgStageLeft + imgStageRight) / 2;
+    const currentHeight = img.offsetHeight;
+    const heightDiff = maxBuildingHeight - currentHeight;
 
-    const uiWidth = ui.offsetWidth;
-    const uiHeight = ui.offsetHeight;
+    let rowOffsetScreen = 30; // Domyślnie nisko nad dachem
 
-    let yOffset = baseGap;
-    let collision = true;
-    let safetyCounter = 200;
-
-    while (collision && safetyCounter > 0) {
-      collision = false;
-      safetyCounter--;
-
-      const bTop = imgStageTop - yOffset - uiHeight;
-      const bBottom = imgStageTop - yOffset;
-      const bLeft = imgCenterX - (uiWidth / 2);
-      const bRight = imgCenterX + (uiWidth / 2);
-
-      const testBox = {
-        left: bLeft - marginX,
-        right: bRight + marginX,
-        top: bTop - marginY,
-        bottom: bBottom + marginY
-      };
-
-      // Sprawdzenie kolizji z dachem/obrazkiem każdego budynku
-      for (const obs of buildingObstacles) {
-        if (!(testBox.right < obs.left || testBox.left > obs.right || testBox.bottom < obs.top || testBox.top > obs.bottom)) {
-          collision = true;
-          break;
-        }
-      }
-
-      // Sprawdzenie kolizji z już umieszczonymi dymkami
-      if (!collision) {
-        for (const pb of placedBubbles) {
-          if (!(testBox.right < pb.left || testBox.left > pb.right || testBox.bottom < pb.top || testBox.top > pb.bottom)) {
-            collision = true;
-            break;
-          }
-        }
-      }
-
-      if (collision) {
-        yOffset += step;
-      }
+    if (!isZoomedIn && buildingItems.length > 1) {
+      // Dzielimy budynki dynamicznie na 3 rzędy (indeks % 3)
+      // Rząd 1: 30px, Rząd 2: 105px, Rząd 3: 180px nad najwyższym punktem
+      const rowChoice = index % 3;
+      if (rowChoice === 0) rowOffsetScreen = 30;
+      else if (rowChoice === 1) rowOffsetScreen = 105;
+      else rowOffsetScreen = 180;
     }
 
-    const finalTop = imgStageTop - yOffset - uiHeight;
-    const finalBottom = imgStageTop - yOffset;
-    const finalLeft = imgCenterX - (uiWidth / 2);
-    const finalRight = imgCenterX + (uiWidth / 2);
+    const rowOffsetStage = rowOffsetScreen * inverseScale;
+    const totalShiftPx = heightDiff + rowOffsetStage;
 
-    placedBubbles.push({ left: finalLeft, right: finalRight, top: finalTop, bottom: finalBottom });
-
-    if (yOffset > baseGap + 5) {
-      ui.classList.add('has-line');
-      ui.style.setProperty('--line-height', `${yOffset - 5}px`);
-    } else {
-      ui.classList.remove('has-line');
-    }
-
-    ui.style.transform = `translateX(-50%) translateY(${-yOffset}px) scale(${inverseScale})`;
+    const localY = -totalShiftPx * currentZoom;
+    ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
 }
 
@@ -194,10 +110,12 @@ function toggleFullscreen() {
 
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
-    if (btn) btn.innerText = " Exit Canvas";
+    document.body.classList.add('no-scroll');
+    btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
-    if (btn) btn.innerText = " Open Interactive Canvas";
+    document.body.classList.remove('no-scroll');
+    btn.innerText = " Open Interactive Canvas";
   }
 
   fitToStage();
@@ -206,7 +124,6 @@ function toggleFullscreen() {
 function updateStageHeight() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
-  if (!wrapper || !stage) return;
   const buildingItems = stage.querySelectorAll('.building-item');
 
   let maxBHeight = 0;
@@ -218,6 +135,7 @@ function updateStageHeight() {
   });
 
   const wrapperH = wrapper.clientHeight;
+  // Zwiększamy zapas wysokości sceny, żeby górny (trzeci) rząd nigdy nie uciął się u góry
   const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
 
   stage.style.height = neededH + 'px';
@@ -257,10 +175,8 @@ function applyTransform() {
         zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
       }
 
-      const stage = document.getElementById('stage');
-      if (stage) {
-        stage.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
-      }
+      document.getElementById('stage').style.transform =
+        `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
       updateBuildingUI();
 
@@ -275,21 +191,21 @@ function initInteractions() {
   const stage = document.getElementById('stage');
 
   const showNamesCheckbox = document.getElementById('showNamesCheckbox');
-  if (showNamesCheckbox && stage) {
+  if (showNamesCheckbox) {
     showNamesCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-names', !e.target.checked);
     });
   }
 
   const showHeightCheckbox = document.getElementById('showHeightCheckbox');
-  if (showHeightCheckbox && stage) {
+  if (showHeightCheckbox) {
     showHeightCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-height', !e.target.checked);
     });
   }
 
   const showYearsCheckbox = document.getElementById('showYearsCheckbox');
-  if (showYearsCheckbox && stage) {
+  if (showYearsCheckbox) {
     showYearsCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-years', !e.target.checked);
     });
@@ -305,7 +221,6 @@ function initInteractions() {
   });
 
   const wrapper = document.getElementById('stageWrapper');
-  if (!wrapper) return;
 
   wrapper.addEventListener('wheel', (e) => {
     if (!isFullscreen) return;
@@ -515,7 +430,6 @@ function fitToStage() {
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
-  if (!stage) return;
   const buildingItems = stage.querySelectorAll('.building-item');
 
   if (buildingItems.length === 0) {
@@ -548,14 +462,13 @@ function fitToStage() {
 function removeBuilding(name) {
   addedBuildings.delete(name);
   const stage = document.getElementById('stage');
-  if (stage) {
-    const items = stage.querySelectorAll('.building-item');
-    items.forEach(item => {
-      if (item.dataset.name === name) {
-        item.remove();
-      }
-    });
-  }
+  const items = stage.querySelectorAll('.building-item');
+  
+  items.forEach(item => {
+    if (item.dataset.name === name) {
+      item.remove();
+    }
+  });
   
   filterData(); 
   fitToStage();
@@ -566,7 +479,6 @@ function addToStage(building) {
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
-  if (!stage) return;
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
