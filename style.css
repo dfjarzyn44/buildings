@@ -216,8 +216,8 @@ select {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 30px;
-  padding: 160px 30px 0 30px;
+  gap: 120px;                     /* Zwiększona przerwa między budynkami */
+  padding: 160px 30px 0 80px;      /* 80px z lewej daje miejsce na liczby siatki */
   box-sizing: border-box;
   min-width: 100%;
   width: max-content;
@@ -301,7 +301,6 @@ select {
   display: none;
 }
 
-/* Hide tooltip box completely if all labels are off */
 #stage.hide-names.hide-height.hide-years .building-info {
   display: none;
 }
@@ -357,27 +356,22 @@ select {
   position: absolute;
   left: 0;
   width: 100%;
-  /* Pogrubiona cienka linia (z 1px na 2px) */
   border-top: 2px dashed rgba(0, 0, 0, 0.25);
 }
 
 .grid-line.major {
-  /* Pogrubiona główna linia (z 1px na 3px) */
   border-top: 3px solid rgba(0, 0, 0, 0.5);
 }
 
 .grid-label {
   position: absolute;
   left: 10px;
-  /* Zmienione na bottom, żeby etykieta siedziała ładnie nad linią niezależnie od jej grubości */
   bottom: 4px;
-  /* Zwiększony bazowy rozmiar */
   font-size: 14px;
   color: #333;
   background: rgba(255, 255, 255, 0.85);
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: bold;
-  /* Punkt zaczepienia dla skalowania - z lewej od dołu */
   transform-origin: left bottom;
 }
