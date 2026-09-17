@@ -21,7 +21,13 @@ injectedStyles.innerHTML = `
     pointer-events: none; 
   }
   .building-ui {
+    position: absolute !important;
+    bottom: 100% !important;
+    left: 50% !important;
+    transform-origin: bottom center !important;
+    white-space: nowrap !important;
     transition: transform 0.1s ease-out;
+    z-index: 10;
   }
   .building-ui.has-line::after {
     content: '';
@@ -74,7 +80,7 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// INTELIGENTNY SYSTEM KOLIZJI (Dymki vs Budynki vs Dymki)
+// SYSTEM KOLIZJI - LINIOWO OD LEWEJ DO PRAWEJ
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -84,34 +90,33 @@ function updateBuildingUI() {
   });
 
   const stage = document.getElementById('stage');
-  const buildingItems = Array.from(stage.querySelectorAll('.building-item'));
+  let buildingItems = Array.from(stage.querySelectorAll('.building-item'));
   if (buildingItems.length === 0) return;
 
-  // 1. Definiujemy budynki jako przeszkody (współrzędne Stage, Y od dołu)
-  const obstacles = [];
-  buildingItems.forEach(item => {
+  // 1. Sortujemy elementy od lewej do prawej według ich fizycznej pozycji na scenie
+  buildingItems.sort((a, b) => a.offsetLeft - b.offsetLeft);
+
+  // 2. Tworzymy listę przeszkód ze wszystkich budynków (obrazków)
+  const buildingObstacles = buildingItems.map(item => {
     const img = item.querySelector('img');
-    if (!img) return;
-    
-    const imgW = img.offsetWidth;
-    const imgH = img.offsetHeight;
+    const imgW = img ? img.offsetWidth : item.offsetWidth;
+    const imgH = img ? img.offsetHeight : item.offsetHeight;
     const itemLeft = item.offsetLeft;
     const imgLeft = itemLeft + (item.offsetWidth - imgW) / 2;
-    
-    obstacles.push({
+
+    return {
       left: imgLeft,
       right: imgLeft + imgW,
       bottom: 0,
       top: imgH
-    });
+    };
   });
 
   const placedBubbles = [];
-  // Dynamiczne odstępy wizualne kompensujące przybliżenie kamery
-  const baseGap = 20 * inverseScale; 
-  const step = 20 * inverseScale;
-  const marginX = 15 * inverseScale;
-  const marginY = 15 * inverseScale;
+  const baseGap = 15; // Domyślna wysokość nad dachem (px sceny)
+  const step = 10;    // Krok podnoszenia dymku w górę
+  const marginX = 8;  // Margines kolizji w poziomie
+  const marginY = 8;  // Margines kolizji w pionie
 
   buildingItems.forEach((item) => {
     const ui = item.querySelector('.building-ui');
@@ -119,26 +124,26 @@ function updateBuildingUI() {
     if (!ui || !img) return;
 
     const imgH = img.offsetHeight;
-    const itemLeft = item.offsetLeft;
-    const itemCenter = itemLeft + item.offsetWidth / 2;
-    
-    const scaledUiW = ui.offsetWidth * inverseScale;
-    const scaledUiH = ui.offsetHeight * inverseScale;
-    
-    const uiLeft = itemCenter - scaledUiW / 2;
-    const uiRight = uiLeft + scaledUiW;
-    
+    const itemCenter = item.offsetLeft + item.offsetWidth / 2;
+
+    // Rzeczywiste wymiary dymku na scenie po skali
+    const uiW = ui.offsetWidth * inverseScale;
+    const uiH = ui.offsetHeight * inverseScale;
+
+    const uiLeft = itemCenter - uiW / 2;
+    const uiRight = uiLeft + uiW;
+
     let yOffset = baseGap;
     let hasCollision = true;
-    let maxIterations = 150; // Zabezpieczenie przed nieskończoną pętlą
-    
-    while (hasCollision && maxIterations > 0) {
+    let safetyCounter = 200;
+
+    while (hasCollision && safetyCounter > 0) {
       hasCollision = false;
-      maxIterations--;
-      
+      safetyCounter--;
+
       const bubbleBottom = imgH + yOffset;
-      const bubbleTop = bubbleBottom + scaledUiH;
-      
+      const bubbleTop = bubbleBottom + uiH;
+
       const testBox = {
         left: uiLeft - marginX,
         right: uiRight + marginX,
@@ -146,8 +151,8 @@ function updateBuildingUI() {
         top: bubbleTop + marginY
       };
 
-      // Sprawdzanie kolizji z bryłami budynków
-      for (const obs of obstacles) {
+      // Sprawdzenie kolizji ze wszystkimi budynkami
+      for (let obs of buildingObstacles) {
         if (!(testBox.right < obs.left || 
               testBox.left > obs.right || 
               testBox.top < obs.bottom || 
@@ -157,9 +162,9 @@ function updateBuildingUI() {
         }
       }
 
-      // Sprawdzanie kolizji z już ustawionymi dymkami
+      // Sprawdzenie kolizji z wcześniej postawionymi dymkami
       if (!hasCollision) {
-        for (const bubble of placedBubbles) {
+        for (let bubble of placedBubbles) {
           if (!(testBox.right < bubble.left || 
                 testBox.left > bubble.right || 
                 testBox.top < bubble.bottom || 
@@ -175,24 +180,24 @@ function updateBuildingUI() {
       }
     }
 
+    // Zapamiętujemy pozycję dymku
     placedBubbles.push({
       left: uiLeft,
       right: uiRight,
       bottom: imgH + yOffset,
-      top: imgH + yOffset + scaledUiH
+      top: imgH + yOffset + uiH
     });
 
-    // Sterowanie linią pomocniczą
-    if (yOffset > baseGap + (5 * inverseScale)) {
+    // Rysowanie kreski przy podniesieniu dymku
+    if (yOffset > baseGap + 5) {
       ui.classList.add('has-line');
-      const lineLength = (yOffset - baseGap) * currentZoom; 
-      ui.style.setProperty('--line-height', `${lineLength}px`);
+      ui.style.setProperty('--line-height', `${yOffset - 5}px`);
     } else {
       ui.classList.remove('has-line');
     }
 
-    const localY = -yOffset * currentZoom;
-    ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
+    // Ustawienie dymku w wyliczonym miejscu
+    ui.style.transform = `translateX(-50%) translateY(${-yOffset}px) scale(${inverseScale})`;
   });
 }
 
