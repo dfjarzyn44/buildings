@@ -11,11 +11,8 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 60px !important;
-    padding-right: 60px !important;
-  }
-  .stage-wrapper.fullscreen {
-    touch-action: none !important; /* Blokada natywnego zoomu przeglądarki */
+    padding-left: 140px !important; /* Miejsce na liczby z lewej */
+    padding-right: 35px !important;  /* Mały margines z prawej (kawałek trawy) */
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -285,6 +282,12 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
+
     if (e.touches.length === 1) {
       isDown = true;
       startX = e.touches[0].clientX - panX;
@@ -302,13 +305,15 @@ function initInteractions() {
       touchStartPanX = panX;
       touchStartPanY = panY;
     }
-  }, { passive: false });
+  }, { passive: true });
 
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
 
+    if (e.touches.length >= 3) return;
+
     if (e.touches.length === 2) {
-      e.preventDefault();
+      if (e.cancelable) e.preventDefault();
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
