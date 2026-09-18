@@ -9,11 +9,19 @@ let addedBuildings = new Set();
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stage {
-    gap: 280px !important;          /* Odstęp pomiędzy kolejnymi budynkami */
+    gap: 280px !important;
     box-sizing: border-box;
+    padding-left: 60px !important;
+    padding-right: 60px !important;
   }
   .stage-wrapper.fullscreen {
-    touch-action: auto !important;  /* Odblokowanie gestów systemowych */
+    touch-action: none !important; /* Blokada natywnego zoomu przeglądarki */
+  }
+  .stage-wrapper.fullscreen #toggleFsBtn {
+    position: fixed !important;
+    top: 15px !important;
+    right: 15px !important;
+    z-index: 9999 !important;
   }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
@@ -33,7 +41,7 @@ injectedStyles.innerHTML = `
   .grid-label {
     position: absolute;
     left: 10px;
-    transform-origin: left center !important; /* Stały punkt zakotwiczenia napisów */
+    transform-origin: left center !important;
     white-space: nowrap;
   }
 `;
@@ -64,14 +72,6 @@ function updateDimensionsCache() {
 
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
-  const stage = document.getElementById('stage');
-
-  // Symetryczny odstęp 60px od lewej i prawej krawędzi (zabezpieczenie przed ucinaniem)
-  if (stage) {
-    const padPx = 60 * inverseScale;
-    stage.style.paddingLeft = padPx + 'px';
-    stage.style.paddingRight = padPx + 'px';
-  }
 
   const gridLabels = document.querySelectorAll('.grid-label');
   gridLabels.forEach(label => {
@@ -125,14 +125,16 @@ function toggleFullscreen() {
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
     document.body.classList.add('no-scroll');
-    btn.innerText = " Exit Canvas";
+    if (btn) btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
     document.body.classList.remove('no-scroll');
-    btn.innerText = " Open Interactive Canvas";
+    if (btn) btn.innerText = " Open Interactive Canvas";
   }
 
-  fitToStage();
+  setTimeout(() => {
+    fitToStage();
+  }, 50);
 }
 
 function updateStageHeight() {
@@ -257,8 +259,10 @@ function initInteractions() {
 
   let isDown = false;
   let startX, startY;
-  let lastTouchDist = 0;
-  let lastMidX = 0, lastMidY = 0;
+  let touchStartDist = 0;
+  let touchStartZoom = 1;
+  let touchStartPanX = 0, touchStartPanY = 0;
+  let touchStartMidX = 0, touchStartMidY = 0;
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen) return;
@@ -287,56 +291,53 @@ function initInteractions() {
       startY = e.touches[0].clientY - panY;
     } else if (e.touches.length === 2) {
       isDown = false;
-      lastTouchDist = Math.hypot(
+      touchStartDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
       const rect = wrapper.getBoundingClientRect();
-      lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      touchStartZoom = currentZoom;
+      touchStartPanX = panX;
+      touchStartPanY = panY;
     }
-  }, { passive: true });
+  }, { passive: false });
 
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
 
-    const rect = wrapper.getBoundingClientRect();
-
-    if (e.touches.length === 1 && isDown) {
-      panX = e.touches[0].clientX - startX;
-      panY = e.touches[0].clientY - startY;
-      applyTransform();
-    } else if (e.touches.length === 2 && lastTouchDist > 0) {
+    if (e.touches.length === 2) {
+      e.preventDefault();
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      if (currentDist === 0 || touchStartDist === 0) return;
 
-      if (currentDist === 0) return;
-
+      const rect = wrapper.getBoundingClientRect();
       const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-      const factor = currentDist / lastTouchDist;
-      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
-      const scaleFactor = newZoom / currentZoom;
+      const factor = currentDist / touchStartDist;
+      const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
+      const scaleFactor = newZoom / touchStartZoom;
 
-      // Prawidłowe przeliczanie środka ciężkości gestu usuwające skakanie ekranu
-      panX = currentMidX - (lastMidX - panX) * scaleFactor;
-      panY = currentMidY - (lastMidY - panY) * scaleFactor;
+      panX = currentMidX - (touchStartMidX - touchStartPanX) * scaleFactor;
+      panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
 
       currentZoom = newZoom;
-      lastTouchDist = currentDist;
-      lastMidX = currentMidX;
-      lastMidY = currentMidY;
-
+      applyTransform();
+    } else if (e.touches.length === 1 && isDown) {
+      panX = e.touches[0].clientX - startX;
+      panY = e.touches[0].clientY - startY;
       applyTransform();
     }
-  }, { passive: true });
+  }, { passive: false });
 
   wrapper.addEventListener('touchend', (e) => {
     if (e.touches.length < 2) {
-      lastTouchDist = 0;
+      touchStartDist = 0;
     }
     if (e.touches.length === 1) {
       isDown = true;
@@ -445,7 +446,6 @@ function clearStage() {
 }
 
 function fitToStage() {
-  updateBuildingUI();
   updateStageHeight();
   updateDimensionsCache();
 
