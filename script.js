@@ -29,6 +29,12 @@ injectedStyles.innerHTML = `
   .building-ui {
     transition: transform 0.1s ease-out;
   }
+  .grid-label {
+    position: absolute;
+    left: 10px;
+    transform-origin: left center !important; /* Stały punkt zakotwiczenia napisów */
+    white-space: nowrap;
+  }
 `;
 document.head.appendChild(injectedStyles);
 
@@ -57,11 +63,11 @@ function updateDimensionsCache() {
 
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
+  const stage = document.getElementById('stage');
 
-  // Dynamiczny dystans od lewej krawędzi - zawsze stałe 140px na ekranie
-  const spacer = document.getElementById('stage-spacer');
-  if (spacer) {
-    spacer.style.width = (140 * inverseScale) + 'px';
+  // Zmniejszony odstęp do 60px od lewej krawędzi
+  if (stage) {
+    stage.style.paddingLeft = (60 * inverseScale) + 'px';
   }
 
   const gridLabels = document.querySelectorAll('.grid-label');
@@ -473,11 +479,6 @@ function removeBuilding(name) {
     }
   });
 
-  if (addedBuildings.size === 0) {
-    const spacer = document.getElementById('stage-spacer');
-    if (spacer) spacer.remove();
-  }
-  
   filterData(); 
   fitToStage();
 }
@@ -487,13 +488,6 @@ function addToStage(building) {
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
-
-  if (!document.getElementById('stage-spacer')) {
-    const spacer = document.createElement('div');
-    spacer.id = 'stage-spacer';
-    spacer.style.cssText = 'width: 140px; flex-shrink: 0; height: 1px;';
-    stage.prepend(spacer);
-  }
 
   const item = document.createElement('div');
   item.className = 'building-item';
