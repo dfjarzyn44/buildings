@@ -10,6 +10,7 @@ const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;          /* Odstęp pomiędzy kolejnymi budynkami */
+    box-sizing: border-box;
   }
   .stage-wrapper.fullscreen {
     touch-action: auto !important;  /* Odblokowanie gestów systemowych */
@@ -65,9 +66,11 @@ function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
   const stage = document.getElementById('stage');
 
-  // Zmniejszony odstęp do 60px od lewej krawędzi
+  // Symetryczny odstęp 60px od lewej i prawej krawędzi (zabezpieczenie przed ucinaniem)
   if (stage) {
-    stage.style.paddingLeft = (60 * inverseScale) + 'px';
+    const padPx = 60 * inverseScale;
+    stage.style.paddingLeft = padPx + 'px';
+    stage.style.paddingRight = padPx + 'px';
   }
 
   const gridLabels = document.querySelectorAll('.grid-label');
@@ -254,6 +257,8 @@ function initInteractions() {
 
   let isDown = false;
   let startX, startY;
+  let lastTouchDist = 0;
+  let lastMidX = 0, lastMidY = 0;
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen) return;
@@ -273,8 +278,6 @@ function initInteractions() {
     applyTransform();
   });
 
-  let lastTouchDist = 0;
-
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
@@ -288,6 +291,9 @@ function initInteractions() {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      const rect = wrapper.getBoundingClientRect();
+      lastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      lastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
     }
   }, { passive: true });
 
@@ -308,17 +314,21 @@ function initInteractions() {
 
       if (currentDist === 0) return;
 
-      const factor = currentDist / lastTouchDist;
-      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
-      const actualFactor = newZoom / currentZoom;
-
       const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-      panX = currentMidX - (currentMidX - panX) * actualFactor;
-      panY = currentMidY - (currentMidY - panY) * actualFactor;
+      const factor = currentDist / lastTouchDist;
+      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
+      const scaleFactor = newZoom / currentZoom;
+
+      // Prawidłowe przeliczanie środka ciężkości gestu usuwające skakanie ekranu
+      panX = currentMidX - (lastMidX - panX) * scaleFactor;
+      panY = currentMidY - (lastMidY - panY) * scaleFactor;
+
       currentZoom = newZoom;
       lastTouchDist = currentDist;
+      lastMidX = currentMidX;
+      lastMidY = currentMidY;
 
       applyTransform();
     }
@@ -435,6 +445,7 @@ function clearStage() {
 }
 
 function fitToStage() {
+  updateBuildingUI();
   updateStageHeight();
   updateDimensionsCache();
 
