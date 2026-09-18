@@ -11,8 +11,8 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 140px !important; /* Miejsce na liczby z lewej */
-    padding-right: 35px !important;  /* Mały margines z prawej (kawałek trawy) */
+    padding-left: 180px !important; /* Zwiększony odstęp z lewej, żeby nie zasłaniał liczb */
+    padding-right: 80px !important;  /* Zwiększony odstęp z prawej, żeby nie ucinało ostatniego budynku */
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
