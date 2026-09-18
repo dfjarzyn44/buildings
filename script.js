@@ -11,8 +11,8 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 180px !important; /* Zwiększony odstęp z lewej, żeby nie zasłaniał liczb */
-    padding-right: 80px !important;  /* Zwiększony odstęp z prawej, żeby nie ucinało ostatniego budynku */
+    padding-left: 500px !important; /* Dokładnie 500px odstępu z lewej strony */
+    padding-right: 80px !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -282,6 +282,7 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
+    // Przepuszczanie gestu 3 lub więcej palców bez żadnej ingerencji (zrzut ekranu)
     if (e.touches.length >= 3) {
       isDown = false;
       touchStartDist = 0;
@@ -341,6 +342,8 @@ function initInteractions() {
   }, { passive: false });
 
   wrapper.addEventListener('touchend', (e) => {
+    if (e.touches.length >= 3) return;
+
     if (e.touches.length < 2) {
       touchStartDist = 0;
     }
