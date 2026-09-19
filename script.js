@@ -1,5 +1,5 @@
 const PIXELS_PER_METER = 10;
-const SCALE_MARGIN = 80; // Stały margines w pikselach ekranu zarezerwowany dla liczb miarki
+const SCALE_MARGIN = 90; // Sztywny margines w px ekranu (od krawędzi do pierwszego budynku)
 
 let buildingsData = [], currentZoom = 1, panX = SCALE_MARGIN, panY = 0;
 let isFullscreen = false;
@@ -9,11 +9,45 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
+  #stageWrapper {
+    position: relative;
+    overflow: hidden;
+  }
   #stage {
+    display: flex;
+    align-items: flex-end;
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 20px !important;
+    padding-left: 0px !important;
     padding-right: 80px !important;
+    transform-origin: 0 100%;
+  }
+  #gridOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .grid-line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    border-top: 1px dashed #e0e0e0;
+  }
+  .grid-line.major {
+    border-top: 1px solid #ccc;
+  }
+  .grid-label {
+    position: absolute;
+    left: 10px;
+    transform: translateY(50%);
+    white-space: nowrap;
+    font-weight: bold;
+    color: #333;
+    font-size: 13px;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -35,13 +69,6 @@ injectedStyles.innerHTML = `
   }
   .building-ui {
     transition: transform 0.1s ease-out;
-  }
-  .grid-label {
-    position: absolute;
-    left: 10px;
-    transform-origin: left center !important;
-    white-space: nowrap;
-    z-index: 10;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -71,12 +98,6 @@ function updateDimensionsCache() {
 
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
-
-  const gridLabels = document.querySelectorAll('.grid-label');
-  gridLabels.forEach(label => {
-    label.style.transform = `scale(${inverseScale})`;
-  });
-
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
@@ -194,7 +215,7 @@ function applyTransform() {
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
-      updateBuildingUI();
+      renderHeightGrid();
 
       ticking = false;
     });
@@ -262,8 +283,6 @@ function initInteractions() {
   let startX, startY;
   let touchStartDist = 0;
   let touchStartZoom = 1;
-  let touchStartPanX = 0, touchStartPanY = 0;
-  let touchStartMidX = 0, touchStartMidY = 0;
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen) return;
@@ -302,19 +321,11 @@ function initInteractions() {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const rect = wrapper.getBoundingClientRect();
-      touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-      touchStartZoom = currentZoom;
-      touchStartPanX = panX;
-      touchStartPanY = panY;
     }
   }, { passive: true });
 
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
-
-    if (e.touches.length >= 3) return;
 
     if (e.touches.length === 2) {
       if (e.cancelable) e.preventDefault();
@@ -324,18 +335,11 @@ function initInteractions() {
       );
       if (currentDist === 0 || touchStartDist === 0) return;
 
-      const rect = wrapper.getBoundingClientRect();
-      const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-
       const factor = currentDist / touchStartDist;
-      const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
-      const scaleFactor = newZoom / touchStartZoom;
-
-      panX = currentMidX - (touchStartMidX - touchStartPanX) * scaleFactor;
-      panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
+      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
 
       currentZoom = newZoom;
+      touchStartDist = currentDist;
       applyTransform();
     } else if (e.touches.length === 1 && isDown) {
       panX = e.touches[0].clientX - startX;
@@ -345,8 +349,6 @@ function initInteractions() {
   }, { passive: false });
 
   wrapper.addEventListener('touchend', (e) => {
-    if (e.touches.length >= 3) return;
-
     if (e.touches.length < 2) {
       touchStartDist = 0;
     }
@@ -361,7 +363,6 @@ function initInteractions() {
 
   window.addEventListener('resize', () => {
     fitToStage();
-    renderHeightGrid();
   });
 }
 
@@ -390,11 +391,13 @@ function renderHeightGrid() {
     const majorStep = 100;
 
     for (let m = minorStep; m <= maxMeters; m += minorStep) {
-      const bottomPx = m * PIXELS_PER_METER;
-      if (bottomPx > stageHeight) break;
+      const bottomPxStage = m * PIXELS_PER_METER;
+      const bottomPxScreen = (bottomPxStage * currentZoom) + panY;
+
+      if (bottomPxScreen < -20 || bottomPxScreen > stageDim.wrapperH + 20) continue;
 
       const isMajor = (m % majorStep === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${m}m` : null, isMajor);
+      createGridLine(gridOverlay, bottomPxScreen, isMajor ? `${m}m` : null, isMajor);
     }
   } else {
     const minorStepFt = 100;
@@ -403,21 +406,23 @@ function renderHeightGrid() {
 
     for (let ft = minorStepFt; ft <= maxFeet; ft += minorStepFt) {
       const meters = ft * 0.3048;
-      const bottomPx = meters * PIXELS_PER_METER;
-      if (bottomPx > stageHeight) break;
+      const bottomPxStage = meters * PIXELS_PER_METER;
+      const bottomPxScreen = (bottomPxStage * currentZoom) + panY;
+
+      if (bottomPxScreen < -20 || bottomPxScreen > stageDim.wrapperH + 20) continue;
 
       const isMajor = (ft % majorStepFt === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
+      createGridLine(gridOverlay, bottomPxScreen, isMajor ? `${ft}ft` : null, isMajor);
     }
   }
 
   updateBuildingUI();
 }
 
-function createGridLine(container, bottomPx, labelText, isMajor) {
+function createGridLine(container, bottomPxScreen, labelText, isMajor) {
   const line = document.createElement('div');
   line.className = `grid-line ${isMajor ? 'major' : 'minor'}`;
-  line.style.bottom = `${bottomPx}px`;
+  line.style.bottom = `${bottomPxScreen}px`;
 
   if (labelText) {
     const label = document.createElement('span');
