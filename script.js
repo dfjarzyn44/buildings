@@ -8,55 +8,11 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
-  #stageWrapper {
-    position: relative !important;
-    overflow: hidden !important;
-  }
   #stage {
-    display: flex !important;
-    align-items: flex-end !important;
-    gap: 160px !important;
-    box-sizing: border-box !important;
-    padding-left: 150px !important;
+    gap: 280px !important;
+    box-sizing: border-box;
+    padding-left: 500px !important; /* Dokładnie 500px odstępu z lewej strony */
     padding-right: 80px !important;
-    transform-origin: 0 100% !important;
-    /* Przycina budynki na 130px od lewej, uniemożliwiając nachodzenie na miarkę */
-    clip-path: inset(-2000px 0px -2000px 130px) !important;
-    z-index: 1;
-  }
-  #gridOverlay {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    pointer-events: none !important;
-    z-index: 10 !important;
-    overflow: hidden !important;
-  }
-  .grid-line {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    border-bottom: 1px dashed rgba(0,0,0,0.15);
-    pointer-events: none;
-  }
-  .grid-line.major {
-    border-bottom: 1px solid rgba(0,0,0,0.3);
-  }
-  .grid-label {
-    position: absolute;
-    left: 15px !important;
-    z-index: 10;
-    white-space: nowrap;
-    font-weight: bold;
-    color: #333;
-    font-size: 13px;
-    background: #ffffff;
-    padding: 2px 6px;
-    border-radius: 3px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transform-origin: left center !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -78,6 +34,12 @@ injectedStyles.innerHTML = `
   }
   .building-ui {
     transition: transform 0.1s ease-out;
+  }
+  .grid-label {
+    position: absolute;
+    left: 10px;
+    transform-origin: left center !important;
+    white-space: nowrap;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -228,12 +190,6 @@ function applyTransform() {
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
-      const gridOverlay = document.getElementById('gridOverlay');
-      if (gridOverlay) {
-        gridOverlay.style.transform =
-          `translate3d(0, ${panY}px, 0) scale(${currentZoom})`;
-      }
-
       updateBuildingUI();
 
       ticking = false;
@@ -326,6 +282,7 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
+    // Przepuszczanie gestu 3 lub więcej palców bez żadnej ingerencji (zrzut ekranu)
     if (e.touches.length >= 3) {
       isDown = false;
       touchStartDist = 0;
