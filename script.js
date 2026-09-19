@@ -8,6 +8,9 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
+  #stageWrapper {
+    touch-action: pan-x pan-y !important;
+  }
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
@@ -282,7 +285,6 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
-    // Przepuszczanie gestu 3 lub więcej palców bez żadnej ingerencji (zrzut ekranu)
     if (e.touches.length >= 3) {
       isDown = false;
       touchStartDist = 0;
@@ -311,7 +313,11 @@ function initInteractions() {
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
 
-    if (e.touches.length >= 3) return;
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
 
     if (e.touches.length === 2) {
       if (e.cancelable) e.preventDefault();
@@ -342,7 +348,11 @@ function initInteractions() {
   }, { passive: false });
 
   wrapper.addEventListener('touchend', (e) => {
-    if (e.touches.length >= 3) return;
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
 
     if (e.touches.length < 2) {
       touchStartDist = 0;
