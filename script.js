@@ -8,77 +8,17 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
-  #stageWrapper {
-    position: relative;
-    overflow: hidden;
-    width: 100%;
-    height: 500px;
-    background: #ffffff;
+  #stage {
+    gap: 280px !important;
+    box-sizing: border-box;
+    padding-left: 500px !important; /* Dokładnie 500px odstępu z lewej strony */
+    padding-right: 80px !important;
   }
-  #stageWrapper.fullscreen {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 99999 !important;
-    border-radius: 0 !important;
-  }
-  #stageWrapper.fullscreen #toggleFsBtn {
+  .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
     top: 15px !important;
     right: 15px !important;
-    z-index: 100000 !important;
-  }
-  #stage {
-    display: flex;
-    align-items: flex-end;
-    gap: 280px !important;
-    box-sizing: border-box;
-    padding-left: 90px !important;
-    padding-right: 80px !important;
-    transform-origin: 0 100%;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-  }
-  #gridOverlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 2;
-  }
-  .grid-line {
-    position: absolute;
-    left: 0;
-    width: 100%;
-    border-top: 1px dashed #e0e0e0;
-  }
-  .grid-line.major {
-    border-top: 1px solid #ccc;
-  }
-  .grid-label {
-    position: absolute;
-    left: 10px;
-    transform: translateY(50%);
-    white-space: nowrap;
-    font-weight: bold;
-    color: #333;
-    font-size: 13px;
-  }
-  .building-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-  }
-  .building-item img {
-    display: block;
-    width: auto;
-    object-fit: contain;
+    z-index: 9999 !important;
   }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
@@ -95,8 +35,11 @@ injectedStyles.innerHTML = `
   .building-ui {
     transition: transform 0.1s ease-out;
   }
-  body.no-scroll {
-    overflow: hidden !important;
+  .grid-label {
+    position: absolute;
+    left: 10px;
+    transform-origin: left center !important;
+    white-space: nowrap;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -114,40 +57,24 @@ async function loadData() {
   }
 }
 
-function updateStageHeight() {
-  const wrapper = document.getElementById('stageWrapper');
-  const stage = document.getElementById('stage');
-  if (!wrapper || !stage) return;
-
-  const buildingItems = stage.querySelectorAll('.building-item');
-  let maxBHeight = 0;
-
-  buildingItems.forEach(item => {
-    const img = item.querySelector('img');
-    const h = img ? (img.offsetHeight || item.offsetHeight) : item.offsetHeight;
-    if (h > maxBHeight) {
-      maxBHeight = h;
-    }
-  });
-
-  const wrapperH = wrapper.clientHeight || 500;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 200) : wrapperH;
-
-  stage.style.height = neededH + 'px';
-}
-
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
 
-  stageDim.wrapperW = wrapper ? wrapper.clientWidth : 1;
-  stageDim.wrapperH = wrapper ? wrapper.clientHeight : 1;
-  stageDim.stageW = stage ? stage.scrollWidth : 1;
-  stageDim.stageH = stage ? stage.offsetHeight : 1;
+  stageDim.wrapperW = wrapper.clientWidth || 1;
+  stageDim.wrapperH = wrapper.clientHeight || 1;
+  stageDim.stageW = stage.scrollWidth || 1;
+  stageDim.stageH = stage.offsetHeight || 1;
 }
 
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
+
+  const gridLabels = document.querySelectorAll('.grid-label');
+  gridLabels.forEach(label => {
+    label.style.transform = `scale(${inverseScale})`;
+  });
+
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
@@ -207,25 +134,44 @@ function toggleFullscreen() {
   }, 50);
 }
 
+function updateStageHeight() {
+  const wrapper = document.getElementById('stageWrapper');
+  const stage = document.getElementById('stage');
+  const buildingItems = stage.querySelectorAll('.building-item');
+
+  let maxBHeight = 0;
+
+  buildingItems.forEach(item => {
+    if (item.offsetHeight > maxBHeight) {
+      maxBHeight = item.offsetHeight;
+    }
+  });
+
+  const wrapperH = wrapper.clientHeight;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
+
+  stage.style.height = neededH + 'px';
+  renderHeightGrid();
+}
+
 function clampPan() {
   const { wrapperW, wrapperH, stageW, stageH } = stageDim;
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
   if (scaledH <= wrapperH) {
-    panY = 0;
+    panY = wrapperH - scaledH;
   } else {
-    const minPanY = 0;
-    const maxPanY = scaledH - wrapperH;
+    const minPanY = wrapperH - scaledH;
+    const maxPanY = 0;
     panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
-  if (scaledW <= wrapperW) {
-    panX = 0;
-  } else {
+  if (scaledW > wrapperW) {
     const minPanX = wrapperW - scaledW;
-    const maxPanX = 0;
-    panX = Math.min(maxPanX, Math.max(minPanX, panX));
+    panX = Math.min(0, Math.max(minPanX, panX));
+  } else {
+    panX = 0;
   }
 }
 
@@ -235,6 +181,7 @@ function applyTransform() {
       clampPan();
 
       const displayZoom = Math.round(currentZoom * 100);
+
       const zoomValElem = document.getElementById('zoomVal');
       if (zoomValElem) {
         zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
@@ -243,7 +190,7 @@ function applyTransform() {
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
-      renderHeightGrid();
+      updateBuildingUI();
 
       ticking = false;
     });
@@ -293,7 +240,7 @@ function initInteractions() {
 
     const zoomStep = 0.12;
     const factor = e.deltaY < 0 ? (1 + zoomStep) : (1 / (1 + zoomStep));
-    const newZoom = Math.min(Math.max(currentZoom * factor, 0.03), 5);
+    const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
     const actualFactor = newZoom / currentZoom;
 
     const rect = wrapper.getBoundingClientRect();
@@ -310,6 +257,9 @@ function initInteractions() {
   let isDown = false;
   let startX, startY;
   let touchStartDist = 0;
+  let touchStartZoom = 1;
+  let touchStartPanX = 0, touchStartPanY = 0;
+  let touchStartMidX = 0, touchStartMidY = 0;
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen) return;
@@ -332,6 +282,13 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
+    // Przepuszczanie gestu 3 lub więcej palców bez żadnej ingerencji (zrzut ekranu)
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
+
     if (e.touches.length === 1) {
       isDown = true;
       startX = e.touches[0].clientX - panX;
@@ -342,11 +299,19 @@ function initInteractions() {
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      const rect = wrapper.getBoundingClientRect();
+      touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      touchStartZoom = currentZoom;
+      touchStartPanX = panX;
+      touchStartPanY = panY;
     }
   }, { passive: true });
 
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
+
+    if (e.touches.length >= 3) return;
 
     if (e.touches.length === 2) {
       if (e.cancelable) e.preventDefault();
@@ -356,11 +321,18 @@ function initInteractions() {
       );
       if (currentDist === 0 || touchStartDist === 0) return;
 
+      const rect = wrapper.getBoundingClientRect();
+      const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
       const factor = currentDist / touchStartDist;
-      const newZoom = Math.min(Math.max(currentZoom * factor, 0.03), 5);
+      const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
+      const scaleFactor = newZoom / touchStartZoom;
+
+      panX = currentMidX - (touchStartMidX - touchStartPanX) * scaleFactor;
+      panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
 
       currentZoom = newZoom;
-      touchStartDist = currentDist;
       applyTransform();
     } else if (e.touches.length === 1 && isDown) {
       panX = e.touches[0].clientX - startX;
@@ -369,13 +341,24 @@ function initInteractions() {
     }
   }, { passive: false });
 
-  wrapper.addEventListener('touchend', () => {
-    isDown = false;
-    touchStartDist = 0;
+  wrapper.addEventListener('touchend', (e) => {
+    if (e.touches.length >= 3) return;
+
+    if (e.touches.length < 2) {
+      touchStartDist = 0;
+    }
+    if (e.touches.length === 1) {
+      isDown = true;
+      startX = e.touches[0].clientX - panX;
+      startY = e.touches[0].clientY - panY;
+    } else {
+      isDown = false;
+    }
   });
 
   window.addEventListener('resize', () => {
     fitToStage();
+    renderHeightGrid();
   });
 }
 
@@ -394,21 +377,21 @@ function renderHeightGrid() {
   gridOverlay.style.display = 'block';
 
   const unit = document.querySelector('input[name="gridUnit"]:checked')?.value || 'metric';
-  const stageH = stageDim.stageH || 500;
-  const maxMeters = stageH / PIXELS_PER_METER;
+  const stage = document.getElementById('stage');
+  const stageHeight = stage ? stage.clientHeight : 500;
+
+  const maxMeters = stageHeight / PIXELS_PER_METER;
 
   if (unit === 'metric') {
     const minorStep = 50; 
     const majorStep = 100;
 
     for (let m = minorStep; m <= maxMeters; m += minorStep) {
-      const bottomPxStage = m * PIXELS_PER_METER;
-      const bottomPxScreen = (bottomPxStage * currentZoom) - panY;
-
-      if (bottomPxScreen < -20 || bottomPxScreen > stageDim.wrapperH + 20) continue;
+      const bottomPx = m * PIXELS_PER_METER;
+      if (bottomPx > stageHeight) break;
 
       const isMajor = (m % majorStep === 0);
-      createGridLine(gridOverlay, bottomPxScreen, isMajor ? `${m}m` : null, isMajor);
+      createGridLine(gridOverlay, bottomPx, isMajor ? `${m}m` : null, isMajor);
     }
   } else {
     const minorStepFt = 100;
@@ -417,23 +400,21 @@ function renderHeightGrid() {
 
     for (let ft = minorStepFt; ft <= maxFeet; ft += minorStepFt) {
       const meters = ft * 0.3048;
-      const bottomPxStage = meters * PIXELS_PER_METER;
-      const bottomPxScreen = (bottomPxStage * currentZoom) - panY;
-
-      if (bottomPxScreen < -20 || bottomPxScreen > stageDim.wrapperH + 20) continue;
+      const bottomPx = meters * PIXELS_PER_METER;
+      if (bottomPx > stageHeight) break;
 
       const isMajor = (ft % majorStepFt === 0);
-      createGridLine(gridOverlay, bottomPxScreen, isMajor ? `${ft}ft` : null, isMajor);
+      createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
     }
   }
 
   updateBuildingUI();
 }
 
-function createGridLine(container, bottomPxScreen, labelText, isMajor) {
+function createGridLine(container, bottomPx, labelText, isMajor) {
   const line = document.createElement('div');
   line.className = `grid-line ${isMajor ? 'major' : 'minor'}`;
-  line.style.bottom = `${bottomPxScreen}px`;
+  line.style.bottom = `${bottomPx}px`;
 
   if (labelText) {
     const label = document.createElement('span');
@@ -477,8 +458,6 @@ function fitToStage() {
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
-  if (!stage) return;
-
   const buildingItems = stage.querySelectorAll('.building-item');
 
   if (buildingItems.length === 0) {
@@ -499,7 +478,11 @@ function fitToStage() {
 
   currentZoom = newZoom;
   panX = 0;
-  panY = 0;
+  panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
+
+  if (isNaN(panY)) {
+    panY = 0;
+  }
 
   applyTransform();
 }
@@ -553,15 +536,13 @@ function addToStage(building) {
     uiContent += `<div class="building-years">${builtStr}</div>`;
   }
 
-  const imgHeightPx = (building.height_m && !isNaN(building.height_m)) ? (building.height_m * PIXELS_PER_METER) : null;
-
   item.innerHTML = `
     <div class="building-ui">
       <div class="building-info">
         ${uiContent}
       </div>
     </div>
-    <img src="${building.image_2d}" alt="${building.name}" ${imgHeightPx ? `style="height: ${imgHeightPx}px;"` : ''}>
+    <img src="${building.image_2d}" alt="${building.name}">
   `;
 
   const img = item.querySelector('img');
