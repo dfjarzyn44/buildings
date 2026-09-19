@@ -15,7 +15,6 @@ injectedStyles.innerHTML = `
     height: 500px;
     background: #ffffff;
   }
-  /* Prawidłowy tryb pełnoekranowy */
   #stageWrapper.fullscreen {
     position: fixed !important;
     top: 0 !important;
@@ -31,16 +30,17 @@ injectedStyles.innerHTML = `
     right: 15px !important;
     z-index: 100000 !important;
   }
-  /* Stały margines 90px po lewej stronie na miarkę */
   #stage {
     display: flex;
     align-items: flex-end;
-    height: 100%;
     gap: 280px !important;
     box-sizing: border-box;
     padding-left: 90px !important;
     padding-right: 80px !important;
     transform-origin: 0 100%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
   }
   #gridOverlay {
     position: absolute;
@@ -68,6 +68,17 @@ injectedStyles.innerHTML = `
     font-weight: bold;
     color: #333;
     font-size: 13px;
+  }
+  .building-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .building-item img {
+    display: block;
+    width: auto;
+    object-fit: contain;
   }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
@@ -103,14 +114,36 @@ async function loadData() {
   }
 }
 
+function updateStageHeight() {
+  const wrapper = document.getElementById('stageWrapper');
+  const stage = document.getElementById('stage');
+  if (!wrapper || !stage) return;
+
+  const buildingItems = stage.querySelectorAll('.building-item');
+  let maxBHeight = 0;
+
+  buildingItems.forEach(item => {
+    const img = item.querySelector('img');
+    const h = img ? (img.offsetHeight || item.offsetHeight) : item.offsetHeight;
+    if (h > maxBHeight) {
+      maxBHeight = h;
+    }
+  });
+
+  const wrapperH = wrapper.clientHeight || 500;
+  const neededH = maxBHeight > 0 ? (maxBHeight + 200) : wrapperH;
+
+  stage.style.height = neededH + 'px';
+}
+
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
 
-  stageDim.wrapperW = wrapper.clientWidth || 1;
-  stageDim.wrapperH = wrapper.clientHeight || 1;
-  stageDim.stageW = stage.scrollWidth || 1;
-  stageDim.stageH = stage.clientHeight || 1;
+  stageDim.wrapperW = wrapper ? wrapper.clientWidth : 1;
+  stageDim.wrapperH = wrapper ? wrapper.clientHeight : 1;
+  stageDim.stageW = stage ? stage.scrollWidth : 1;
+  stageDim.stageH = stage ? stage.offsetHeight : 1;
 }
 
 function updateBuildingUI() {
@@ -182,15 +215,17 @@ function clampPan() {
   if (scaledH <= wrapperH) {
     panY = 0;
   } else {
-    const minPanY = wrapperH - scaledH;
-    panY = Math.min(0, Math.max(minPanY, panY));
+    const minPanY = 0;
+    const maxPanY = scaledH - wrapperH;
+    panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
   if (scaledW <= wrapperW) {
     panX = 0;
   } else {
     const minPanX = wrapperW - scaledW;
-    panX = Math.min(0, Math.max(minPanX, panX));
+    const maxPanX = 0;
+    panX = Math.min(maxPanX, Math.max(minPanX, panX));
   }
 }
 
@@ -258,7 +293,7 @@ function initInteractions() {
 
     const zoomStep = 0.12;
     const factor = e.deltaY < 0 ? (1 + zoomStep) : (1 / (1 + zoomStep));
-    const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
+    const newZoom = Math.min(Math.max(currentZoom * factor, 0.03), 5);
     const actualFactor = newZoom / currentZoom;
 
     const rect = wrapper.getBoundingClientRect();
@@ -322,7 +357,7 @@ function initInteractions() {
       if (currentDist === 0 || touchStartDist === 0) return;
 
       const factor = currentDist / touchStartDist;
-      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
+      const newZoom = Math.min(Math.max(currentZoom * factor, 0.03), 5);
 
       currentZoom = newZoom;
       touchStartDist = currentDist;
@@ -359,9 +394,8 @@ function renderHeightGrid() {
   gridOverlay.style.display = 'block';
 
   const unit = document.querySelector('input[name="gridUnit"]:checked')?.value || 'metric';
-  const stageDimH = stageDim.wrapperH || 500;
-
-  const maxMeters = (stageDimH / currentZoom) / PIXELS_PER_METER;
+  const stageH = stageDim.stageH || 500;
+  const maxMeters = stageH / PIXELS_PER_METER;
 
   if (unit === 'metric') {
     const minorStep = 50; 
@@ -369,7 +403,7 @@ function renderHeightGrid() {
 
     for (let m = minorStep; m <= maxMeters; m += minorStep) {
       const bottomPxStage = m * PIXELS_PER_METER;
-      const bottomPxScreen = (bottomPxStage * currentZoom) + panY;
+      const bottomPxScreen = (bottomPxStage * currentZoom) - panY;
 
       if (bottomPxScreen < -20 || bottomPxScreen > stageDim.wrapperH + 20) continue;
 
@@ -384,7 +418,7 @@ function renderHeightGrid() {
     for (let ft = minorStepFt; ft <= maxFeet; ft += minorStepFt) {
       const meters = ft * 0.3048;
       const bottomPxStage = meters * PIXELS_PER_METER;
-      const bottomPxScreen = (bottomPxStage * currentZoom) + panY;
+      const bottomPxScreen = (bottomPxStage * currentZoom) - panY;
 
       if (bottomPxScreen < -20 || bottomPxScreen > stageDim.wrapperH + 20) continue;
 
@@ -439,9 +473,12 @@ function clearStage() {
 }
 
 function fitToStage() {
+  updateStageHeight();
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
+  if (!stage) return;
+
   const buildingItems = stage.querySelectorAll('.building-item');
 
   if (buildingItems.length === 0) {
@@ -516,13 +553,15 @@ function addToStage(building) {
     uiContent += `<div class="building-years">${builtStr}</div>`;
   }
 
+  const imgHeightPx = (building.height_m && !isNaN(building.height_m)) ? (building.height_m * PIXELS_PER_METER) : null;
+
   item.innerHTML = `
     <div class="building-ui">
       <div class="building-info">
         ${uiContent}
       </div>
     </div>
-    <img src="${building.image_2d}" alt="${building.name}">
+    <img src="${building.image_2d}" alt="${building.name}" ${imgHeightPx ? `style="height: ${imgHeightPx}px;"` : ''}>
   `;
 
   const img = item.querySelector('img');
