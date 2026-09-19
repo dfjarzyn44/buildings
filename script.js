@@ -8,13 +8,68 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
+  #stageWrapper {
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  #stageViewport {
+    position: absolute !important;
+    top: 0 !important;
+    left: 150px !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    overflow: hidden !important;
+    z-index: 1 !important;
+  }
   #stage {
-    gap: 280px !important;
-    box-sizing: border-box;
-    /* Dedykowana strefa dla miarki (0-140px). Budynki spawnują się dopiero od 140px w prawo */
-    padding-left: 140px !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    gap: 160px !important;
+    box-sizing: border-box !important;
     padding-right: 80px !important;
+    transform-origin: 0 100% !important;
     z-index: 1;
+  }
+  #gridOverlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+    overflow: hidden !important;
+  }
+  #gridStage {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    transform-origin: 0 100% !important;
+  }
+  .grid-line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    border-bottom: 1px dashed rgba(0,0,0,0.15);
+    pointer-events: none;
+  }
+  .grid-line.major {
+    border-bottom: 1px solid rgba(0,0,0,0.3);
+  }
+  .grid-label {
+    position: absolute;
+    left: 15px !important;
+    z-index: 10;
+    white-space: nowrap;
+    font-weight: bold;
+    color: #333;
+    font-size: 13px;
+    background: #ffffff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transform-origin: left center !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -37,25 +92,42 @@ injectedStyles.innerHTML = `
   .building-ui {
     transition: transform 0.1s ease-out;
   }
-  .grid-label {
-    position: absolute;
-    left: 20px;
-    z-index: 10;
-    white-space: nowrap;
-    font-weight: bold;
-    color: #333;
-    font-size: 13px;
-    background: #ffffff;
-    padding: 2px 6px;
-    border-radius: 3px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    transform-origin: left center !important;
-  }
 `;
 document.head.appendChild(injectedStyles);
 
+function setupDOMStructure() {
+  const wrapper = document.getElementById('stageWrapper');
+  const stage = document.getElementById('stage');
+  if (!wrapper || !stage) return;
+
+  let viewport = document.getElementById('stageViewport');
+  if (!viewport) {
+    viewport = document.createElement('div');
+    viewport.id = 'stageViewport';
+    stage.parentNode.insertBefore(viewport, stage);
+    viewport.appendChild(stage);
+  }
+
+  let gridOverlay = document.getElementById('gridOverlay');
+  if (!gridOverlay) {
+    gridOverlay = document.createElement('div');
+    gridOverlay.id = 'gridOverlay';
+    wrapper.appendChild(gridOverlay);
+  } else if (gridOverlay.parentNode !== wrapper) {
+    wrapper.appendChild(gridOverlay);
+  }
+
+  let gridStage = document.getElementById('gridStage');
+  if (!gridStage) {
+    gridStage = document.createElement('div');
+    gridStage.id = 'gridStage';
+    gridOverlay.appendChild(gridStage);
+  }
+}
+
 async function loadData() {
   try {
+    setupDOMStructure();
     const response = await fetch('budynki.json');
     buildingsData = await response.json();
     renderGrid(buildingsData);
@@ -70,8 +142,9 @@ async function loadData() {
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
+  const viewport = document.getElementById('stageViewport');
 
-  stageDim.wrapperW = wrapper.clientWidth || 1;
+  stageDim.wrapperW = (viewport ? viewport.clientWidth : wrapper.clientWidth) || 1;
   stageDim.wrapperH = wrapper.clientHeight || 1;
   stageDim.stageW = stage.scrollWidth || 1;
   stageDim.stageH = stage.offsetHeight || 1;
@@ -199,6 +272,12 @@ function applyTransform() {
 
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
+
+      const gridStage = document.getElementById('gridStage');
+      if (gridStage) {
+        gridStage.style.transform =
+          `translate3d(0, ${panY}px, 0) scale(${currentZoom})`;
+      }
 
       updateBuildingUI();
 
@@ -376,7 +455,14 @@ function renderHeightGrid() {
   const showGridCheckbox = document.getElementById('showGridCheckbox');
   if (!gridOverlay || !showGridCheckbox) return;
 
-  gridOverlay.innerHTML = '';
+  let gridStage = document.getElementById('gridStage');
+  if (!gridStage) {
+    gridStage = document.createElement('div');
+    gridStage.id = 'gridStage';
+    gridOverlay.appendChild(gridStage);
+  }
+
+  gridStage.innerHTML = '';
 
   if (!showGridCheckbox.checked) {
     gridOverlay.style.display = 'none';
@@ -388,6 +474,7 @@ function renderHeightGrid() {
   const unit = document.querySelector('input[name="gridUnit"]:checked')?.value || 'metric';
   const stage = document.getElementById('stage');
   const stageHeight = stage ? stage.clientHeight : 500;
+  gridStage.style.height = stageHeight + 'px';
 
   const maxMeters = stageHeight / PIXELS_PER_METER;
 
@@ -400,7 +487,7 @@ function renderHeightGrid() {
       if (bottomPx > stageHeight) break;
 
       const isMajor = (m % majorStep === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${m}m` : null, isMajor);
+      createGridLine(gridStage, bottomPx, isMajor ? `${m}m` : null, isMajor);
     }
   } else {
     const minorStepFt = 100;
@@ -413,7 +500,7 @@ function renderHeightGrid() {
       if (bottomPx > stageHeight) break;
 
       const isMajor = (ft % majorStepFt === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
+      createGridLine(gridStage, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
     }
   }
 
