@@ -1,6 +1,7 @@
 const PIXELS_PER_METER = 10;
+const SCALE_MARGIN = 80; // Stały margines w pikselach ekranu zarezerwowany dla liczb miarki
 
-let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
+let buildingsData = [], currentZoom = 1, panX = SCALE_MARGIN, panY = 0;
 let isFullscreen = false;
 let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
@@ -11,7 +12,7 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 500px !important; /* Dokładnie 500px odstępu z lewej strony */
+    padding-left: 20px !important;
     padding-right: 80px !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
@@ -40,6 +41,7 @@ injectedStyles.innerHTML = `
     left: 10px;
     transform-origin: left center !important;
     white-space: nowrap;
+    z-index: 10;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -167,11 +169,13 @@ function clampPan() {
     panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
-  if (scaledW > wrapperW) {
+  const availableW = wrapperW - SCALE_MARGIN;
+  if (scaledW > availableW) {
     const minPanX = wrapperW - scaledW;
-    panX = Math.min(0, Math.max(minPanX, panX));
+    const maxPanX = SCALE_MARGIN;
+    panX = Math.min(maxPanX, Math.max(minPanX, panX));
   } else {
-    panX = 0;
+    panX = SCALE_MARGIN;
   }
 }
 
@@ -282,7 +286,6 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
-    // Przepuszczanie gestu 3 lub więcej palców bez żadnej ingerencji (zrzut ekranu)
     if (e.touches.length >= 3) {
       isDown = false;
       touchStartDist = 0;
@@ -462,13 +465,14 @@ function fitToStage() {
 
   if (buildingItems.length === 0) {
     currentZoom = 1;
-    panX = 0;
+    panX = SCALE_MARGIN;
     panY = 0;
     applyTransform();
     return;
   }
 
-  const scaleX = stageDim.wrapperW / stageDim.stageW;
+  const availableW = Math.max(stageDim.wrapperW - SCALE_MARGIN, 1);
+  const scaleX = availableW / stageDim.stageW;
   const scaleY = stageDim.wrapperH / stageDim.stageH;
   let newZoom = Math.min(scaleX, scaleY, 1);
 
@@ -477,7 +481,7 @@ function fitToStage() {
   }
 
   currentZoom = newZoom;
-  panX = 0;
+  panX = SCALE_MARGIN;
   panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
 
   if (isNaN(panY)) {
