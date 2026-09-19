@@ -11,8 +11,10 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 500px !important; /* Dokładnie 500px odstępu z lewej strony */
+    /* Dedykowana strefa dla miarki (0-140px). Budynki spawnują się dopiero od 140px w prawo */
+    padding-left: 140px !important;
     padding-right: 80px !important;
+    z-index: 1;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -37,9 +39,17 @@ injectedStyles.innerHTML = `
   }
   .grid-label {
     position: absolute;
-    left: 10px;
-    transform-origin: left center !important;
+    left: 20px;
+    z-index: 10;
     white-space: nowrap;
+    font-weight: bold;
+    color: #333;
+    font-size: 13px;
+    background: #ffffff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transform-origin: left center !important;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -282,7 +292,6 @@ function initInteractions() {
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
 
-    // Przepuszczanie gestu 3 lub więcej palców bez żadnej ingerencji (zrzut ekranu)
     if (e.touches.length >= 3) {
       isDown = false;
       touchStartDist = 0;
