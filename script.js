@@ -1,7 +1,6 @@
 const PIXELS_PER_METER = 10;
-const SCALE_MARGIN = 90; // Sztywny margines w px ekranu (od krawędzi do pierwszego budynku)
 
-let buildingsData = [], currentZoom = 1, panX = SCALE_MARGIN, panY = 0;
+let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
 let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
@@ -12,13 +11,34 @@ injectedStyles.innerHTML = `
   #stageWrapper {
     position: relative;
     overflow: hidden;
+    width: 100%;
+    height: 500px;
+    background: #ffffff;
   }
+  /* Prawidłowy tryb pełnoekranowy */
+  #stageWrapper.fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 99999 !important;
+    border-radius: 0 !important;
+  }
+  #stageWrapper.fullscreen #toggleFsBtn {
+    position: fixed !important;
+    top: 15px !important;
+    right: 15px !important;
+    z-index: 100000 !important;
+  }
+  /* Stały margines 90px po lewej stronie na miarkę */
   #stage {
     display: flex;
     align-items: flex-end;
+    height: 100%;
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 0px !important;
+    padding-left: 90px !important;
     padding-right: 80px !important;
     transform-origin: 0 100%;
   }
@@ -49,12 +69,6 @@ injectedStyles.innerHTML = `
     color: #333;
     font-size: 13px;
   }
-  .stage-wrapper.fullscreen #toggleFsBtn {
-    position: fixed !important;
-    top: 15px !important;
-    right: 15px !important;
-    z-index: 9999 !important;
-  }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
   .card-remove-indicator { 
@@ -69,6 +83,9 @@ injectedStyles.innerHTML = `
   }
   .building-ui {
     transition: transform 0.1s ease-out;
+  }
+  body.no-scroll {
+    overflow: hidden !important;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -93,7 +110,7 @@ function updateDimensionsCache() {
   stageDim.wrapperW = wrapper.clientWidth || 1;
   stageDim.wrapperH = wrapper.clientHeight || 1;
   stageDim.stageW = stage.scrollWidth || 1;
-  stageDim.stageH = stage.offsetHeight || 1;
+  stageDim.stageH = stage.clientHeight || 1;
 }
 
 function updateBuildingUI() {
@@ -157,46 +174,23 @@ function toggleFullscreen() {
   }, 50);
 }
 
-function updateStageHeight() {
-  const wrapper = document.getElementById('stageWrapper');
-  const stage = document.getElementById('stage');
-  const buildingItems = stage.querySelectorAll('.building-item');
-
-  let maxBHeight = 0;
-
-  buildingItems.forEach(item => {
-    if (item.offsetHeight > maxBHeight) {
-      maxBHeight = item.offsetHeight;
-    }
-  });
-
-  const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
-
-  stage.style.height = neededH + 'px';
-  renderHeightGrid();
-}
-
 function clampPan() {
   const { wrapperW, wrapperH, stageW, stageH } = stageDim;
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
   if (scaledH <= wrapperH) {
-    panY = wrapperH - scaledH;
+    panY = 0;
   } else {
     const minPanY = wrapperH - scaledH;
-    const maxPanY = 0;
-    panY = Math.min(maxPanY, Math.max(minPanY, panY));
+    panY = Math.min(0, Math.max(minPanY, panY));
   }
 
-  const availableW = wrapperW - SCALE_MARGIN;
-  if (scaledW > availableW) {
-    const minPanX = wrapperW - scaledW;
-    const maxPanX = SCALE_MARGIN;
-    panX = Math.min(maxPanX, Math.max(minPanX, panX));
+  if (scaledW <= wrapperW) {
+    panX = 0;
   } else {
-    panX = SCALE_MARGIN;
+    const minPanX = wrapperW - scaledW;
+    panX = Math.min(0, Math.max(minPanX, panX));
   }
 }
 
@@ -206,7 +200,6 @@ function applyTransform() {
       clampPan();
 
       const displayZoom = Math.round(currentZoom * 100);
-
       const zoomValElem = document.getElementById('zoomVal');
       if (zoomValElem) {
         zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
@@ -282,7 +275,6 @@ function initInteractions() {
   let isDown = false;
   let startX, startY;
   let touchStartDist = 0;
-  let touchStartZoom = 1;
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen) return;
@@ -304,12 +296,6 @@ function initInteractions() {
 
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
-
-    if (e.touches.length >= 3) {
-      isDown = false;
-      touchStartDist = 0;
-      return;
-    }
 
     if (e.touches.length === 1) {
       isDown = true;
@@ -348,17 +334,9 @@ function initInteractions() {
     }
   }, { passive: false });
 
-  wrapper.addEventListener('touchend', (e) => {
-    if (e.touches.length < 2) {
-      touchStartDist = 0;
-    }
-    if (e.touches.length === 1) {
-      isDown = true;
-      startX = e.touches[0].clientX - panX;
-      startY = e.touches[0].clientY - panY;
-    } else {
-      isDown = false;
-    }
+  wrapper.addEventListener('touchend', () => {
+    isDown = false;
+    touchStartDist = 0;
   });
 
   window.addEventListener('resize', () => {
@@ -381,10 +359,9 @@ function renderHeightGrid() {
   gridOverlay.style.display = 'block';
 
   const unit = document.querySelector('input[name="gridUnit"]:checked')?.value || 'metric';
-  const stage = document.getElementById('stage');
-  const stageHeight = stage ? stage.clientHeight : 500;
+  const stageDimH = stageDim.wrapperH || 500;
 
-  const maxMeters = stageHeight / PIXELS_PER_METER;
+  const maxMeters = (stageDimH / currentZoom) / PIXELS_PER_METER;
 
   if (unit === 'metric') {
     const minorStep = 50; 
@@ -462,7 +439,6 @@ function clearStage() {
 }
 
 function fitToStage() {
-  updateStageHeight();
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
@@ -470,14 +446,13 @@ function fitToStage() {
 
   if (buildingItems.length === 0) {
     currentZoom = 1;
-    panX = SCALE_MARGIN;
+    panX = 0;
     panY = 0;
     applyTransform();
     return;
   }
 
-  const availableW = Math.max(stageDim.wrapperW - SCALE_MARGIN, 1);
-  const scaleX = availableW / stageDim.stageW;
+  const scaleX = stageDim.wrapperW / stageDim.stageW;
   const scaleY = stageDim.wrapperH / stageDim.stageH;
   let newZoom = Math.min(scaleX, scaleY, 1);
 
@@ -486,12 +461,8 @@ function fitToStage() {
   }
 
   currentZoom = newZoom;
-  panX = SCALE_MARGIN;
-  panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
-
-  if (isNaN(panY)) {
-    panY = 0;
-  }
+  panX = 0;
+  panY = 0;
 
   applyTransform();
 }
