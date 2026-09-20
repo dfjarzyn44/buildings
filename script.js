@@ -1,4 +1,5 @@
 const PIXELS_PER_METER = 10;
+const MIN_SCREEN_PADDING = 55; // Zmniejszony odstęp, by zlikwidować wielką dziurę z lewej
 
 let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
@@ -15,6 +16,7 @@ injectedStyles.innerHTML = `
     gap: 280px !important;
     box-sizing: border-box;
     padding-right: 80px !important;
+    transform-origin: 0 0 !important; /* Kluczowe dla poprawnego przybliżania bez uciekania */
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -39,22 +41,18 @@ injectedStyles.innerHTML = `
   }
   .grid-label {
     position: absolute;
-    left: 10px;
+    left: 4px; /* Przysunięcie cyfr bliżej lewej krawędzi ekranu */
     transform-origin: left center !important;
     white-space: nowrap;
   }
 `;
 document.head.appendChild(injectedStyles);
 
-// Funkcja dynamicznie przeliczająca lewy odstęp, aby cyfry siatki nigdy nie nachodziły na budynki
 function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
   
-  // Stały, bezpieczny odstęp na cyfry na ekranie (w pikselach widoku)
-  const minScreenPadding = 110; 
-  const dynamicPadding = Math.round(minScreenPadding / currentZoom);
-  
+  const dynamicPadding = Math.round(MIN_SCREEN_PADDING / currentZoom);
   stage.style.paddingLeft = `${dynamicPadding}px`;
 }
 
@@ -263,10 +261,11 @@ function initInteractions() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    panX = mouseX - (mouseX - panX) * actualFactor;
+    // Korekta o dynamiczny margines
+    panX = mouseX - MIN_SCREEN_PADDING - (mouseX - panX - MIN_SCREEN_PADDING) * actualFactor;
     panY = mouseY - (mouseY - panY) * actualFactor;
+    
     currentZoom = newZoom;
-
     applyTransform();
   }, { passive: false });
 
@@ -348,7 +347,8 @@ function initInteractions() {
       const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
       const scaleFactor = newZoom / touchStartZoom;
 
-      panX = currentMidX - (touchStartMidX - touchStartPanX) * scaleFactor;
+      // Korekta ogniskowej (zapobiega dryfowaniu budynków podczas szczypania)
+      panX = currentMidX - MIN_SCREEN_PADDING - (touchStartMidX - touchStartPanX - MIN_SCREEN_PADDING) * scaleFactor;
       panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
 
       currentZoom = newZoom;
