@@ -14,7 +14,6 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-left: 500px !important; /* Dokładnie 500px odstępu z lewej strony */
     padding-right: 80px !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
@@ -46,6 +45,18 @@ injectedStyles.innerHTML = `
   }
 `;
 document.head.appendChild(injectedStyles);
+
+// Funkcja dynamicznie przeliczająca lewy odstęp, aby cyfry siatki nigdy nie nachodziły na budynki
+function updateDynamicPadding() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+  
+  // Stały, bezpieczny odstęp na cyfry na ekranie (w pikselach widoku)
+  const minScreenPadding = 110; 
+  const dynamicPadding = Math.round(minScreenPadding / currentZoom);
+  
+  stage.style.paddingLeft = `${dynamicPadding}px`;
+}
 
 async function loadData() {
   try {
@@ -181,6 +192,8 @@ function clampPan() {
 function applyTransform() {
   if (!ticking) {
     requestAnimationFrame(() => {
+      updateDynamicPadding();
+      updateDimensionsCache();
       clampPan();
 
       const displayZoom = Math.round(currentZoom * 100);
@@ -464,6 +477,7 @@ function clearStage() {
 }
 
 function fitToStage() {
+  updateDynamicPadding();
   updateStageHeight();
   updateDimensionsCache();
 
@@ -487,6 +501,10 @@ function fitToStage() {
   }
 
   currentZoom = newZoom;
+
+  updateDynamicPadding();
+  updateDimensionsCache();
+
   panX = 0;
   panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
 
