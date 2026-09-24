@@ -1,5 +1,5 @@
 const PIXELS_PER_METER = 10;
-const MIN_SCREEN_PADDING = 55; // Zmniejszony odstęp, by zlikwidować wielką dziurę z lewej
+const MIN_SCREEN_PADDING = 55;
 
 let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
@@ -16,7 +16,7 @@ injectedStyles.innerHTML = `
     gap: 280px !important;
     box-sizing: border-box;
     padding-right: 80px !important;
-    transform-origin: 0 0 !important; /* Kluczowe dla poprawnego przybliżania bez uciekania */
+    transform-origin: 0 0 !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -41,9 +41,29 @@ injectedStyles.innerHTML = `
   }
   .grid-label {
     position: absolute;
-    left: 4px; /* Przysunięcie cyfr bliżej lewej krawędzi ekranu */
+    left: 4px;
     transform-origin: left center !important;
     white-space: nowrap;
+  }
+  /* Ograniczenie szerokości etykiet i układanie nazwy w max 2 linie bez kropek */
+  .building-info {
+    max-width: 120px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    text-align: center;
+  }
+  .building-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-weight: bold;
+    word-break: break-word;
+  }
+  .building-height, .building-years {
+    white-space: nowrap !important;
+    font-size: 10px !important;
   }
 `;
 document.head.appendChild(injectedStyles);
@@ -152,15 +172,21 @@ function updateStageHeight() {
   const buildingItems = stage.querySelectorAll('.building-item');
 
   let maxBHeight = 0;
-
   buildingItems.forEach(item => {
     if (item.offsetHeight > maxBHeight) {
       maxBHeight = item.offsetHeight;
     }
   });
 
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+
+  const hasLabels = showNames || showHeight || showYears;
+  const labelSpace = hasLabels ? 220 : 30;
+
   const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
+  const neededH = maxBHeight > 0 ? (maxBHeight + labelSpace) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -220,6 +246,7 @@ function initInteractions() {
   if (showNamesCheckbox) {
     showNamesCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-names', !e.target.checked);
+      fitToStage();
     });
   }
 
@@ -227,6 +254,7 @@ function initInteractions() {
   if (showHeightCheckbox) {
     showHeightCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-height', !e.target.checked);
+      fitToStage();
     });
   }
 
@@ -234,6 +262,7 @@ function initInteractions() {
   if (showYearsCheckbox) {
     showYearsCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-years', !e.target.checked);
+      fitToStage();
     });
   }
 
@@ -261,7 +290,6 @@ function initInteractions() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Korekta o dynamiczny margines
     panX = mouseX - MIN_SCREEN_PADDING - (mouseX - panX - MIN_SCREEN_PADDING) * actualFactor;
     panY = mouseY - (mouseY - panY) * actualFactor;
     
@@ -347,7 +375,6 @@ function initInteractions() {
       const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
       const scaleFactor = newZoom / touchStartZoom;
 
-      // Korekta ogniskowej (zapobiega dryfowaniu budynków podczas szczypania)
       panX = currentMidX - MIN_SCREEN_PADDING - (touchStartMidX - touchStartPanX - MIN_SCREEN_PADDING) * scaleFactor;
       panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
 
