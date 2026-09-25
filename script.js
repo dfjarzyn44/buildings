@@ -15,7 +15,6 @@ injectedStyles.innerHTML = `
   #stage {
     gap: 280px !important;
     box-sizing: border-box;
-    padding-right: 80px !important;
     transform-origin: 0 0 !important;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
@@ -45,7 +44,6 @@ injectedStyles.innerHTML = `
     transform-origin: left center !important;
     white-space: nowrap;
   }
-  /* Ograniczenie szerokości etykiet i układanie nazwy w max 2 linie bez kropek */
   .building-info {
     max-width: 120px !important;
     padding: 4px 6px !important;
@@ -71,9 +69,18 @@ document.head.appendChild(injectedStyles);
 function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
-  
-  const dynamicPadding = Math.round(MIN_SCREEN_PADDING / currentZoom);
-  stage.style.paddingLeft = `${dynamicPadding}px`;
+
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
+  // Kwestia 3: Zapas poziomy w px ekranu (po włączeniu dymków zwiększamy, by nie ucinało skrajnych etykiet)
+  const minLeftPadScreen = hasLabels ? 80 : 55;
+  const minRightPadScreen = hasLabels ? 90 : 60;
+
+  stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
+  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
 }
 
 async function loadData() {
@@ -181,12 +188,16 @@ function updateStageHeight() {
   const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
   const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-
   const hasLabels = showNames || showHeight || showYears;
-  const labelSpace = hasLabels ? 220 : 30;
 
-  const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + labelSpace) : wrapperH;
+  const wrapperH = wrapper.clientHeight || 500;
+
+  // Kwestia 1 i 2: 270px rezerwy ekranowej dla etykiet, 80px w widoku czystym
+  const topPaddingScreen = hasLabels ? 270 : 80;
+  const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
+  const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
+
+  const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -504,8 +515,8 @@ function clearStage() {
 }
 
 function fitToStage() {
-  updateDynamicPadding();
   updateStageHeight();
+  updateDynamicPadding();
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
