@@ -185,5 +185,16 @@
     "year_built": 2014,
     "thumbnail": "Mini/wtc-one.mini.webp",
     "image_2d": "Buildings2D/wtc-one.webp"
-  }
+  },
+  {
+    "id": "salesforce-tower",
+    "name": "Salesforce Tower",
+    "country": "United States",
+    "city": "San Francisco",
+    "category": "Skyscrapers",
+    "height_m": "326.1 m / 1070 ft",
+    "year_built": 2018,
+    "thumbnail": "Mini/salesforce-tower.mini.webp",
+    "image_2d": "Buildings2D/salesforce-tower.webp"
+}
 ]
