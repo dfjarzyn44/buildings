@@ -174,5 +174,16 @@
     "year_built": 1976,
     "thumbnail": "Mini/cn-tower.mini.webp",
     "image_2d": "Buildings2D/cn-tower.webp"
+  },
+  {
+    "id": "wtc-one",
+    "name": "One World Trade Center",
+    "country": "United States",
+    "city": "New York City",
+    "category": "Skyscrapers",
+    "height_m": "541 m / 1776 ft",
+    "year_built": 2014,
+    "thumbnail": "Mini/wtc-one.mini.webp",
+    "image_2d": "Buildings2D/wtc-one.webp"
   }
 ]
