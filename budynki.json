@@ -196,5 +196,26 @@
     "year_built": 2018,
     "thumbnail": "Mini/salesforce-tower.mini.webp",
     "image_2d": "Buildings2D/salesforce-tower.webp"
-}
+},
+  {
+    "id": "burj-al-arab",
+    "name": "Burj Al Arab",
+    "country": "United Arab Emirates",
+    "city": "Dubai",
+    "category": "Skyscrapers",
+    "height_m": "321 m / 1053 ft",
+    "year_built": 1999,
+    "thumbnail": "Mini/burj-al-arab.mini.webp",
+    "image_2d": "Buildings2D/burj-al-arab.webp"
+  },
+  {
+    "id": "shanghai-tower",
+    "name": "Shanghai Tower",
+    "country": "China",
+    "city": "Shanghai",
+    "category": "Skyscrapers",
+    "height_m": "632 m / 2073 ft",
+    "year_built": 2015,
+    "thumbnail": "Mini/shanghai-tower.mini.webp",
+    "image_2d": "Buildings2D/shanghai-tower.webp"}
 ]
