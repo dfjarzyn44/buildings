@@ -240,6 +240,17 @@
   "year_built": "1882-2026",
   "thumbnail": "Mini/la-sagrada-familia.mini.webp",
   "image_2d": "Buildings2D/la-sagrada-familia.webp"
+},
+  {
+"id": "abraj-al-bait",
+"name": "Makkah Clock Tower",
+"country": "Saudi Arabia",
+"city": "Mecca",
+"category": "Skyscrapers & Hotels",
+"height_m": "601 m / 1972 ft",
+"year_built": 2012,
+"thumbnail": "Mini/abraj-al-bait.mini.webp",
+"image_2d": "Buildings2D/abraj-al-bait.webp"
 }
 
 ]
