@@ -251,6 +251,39 @@
 "year_built": 2012,
 "thumbnail": "Mini/abraj-al-bait.mini.webp",
 "image_2d": "Buildings2D/abraj-al-bait.webp"
-}
+},
+  {
+    "id": "merdeka-118",
+    "name": "Merdeka 118",
+    "country": "Malaysia",
+    "city": "Kuala Lumpur",
+    "category": "Skyscrapers",
+    "height_m": "678.9 m / 2227 ft",
+    "year_built": 2023,
+    "thumbnail": "Mini/merdeka-118.mini.webp",
+    "image_2d": "Buildings2D/merdeka-118.webp"
+  },
+  {
+    "id": "shanghai-world-financial-center",
+    "name": "Shanghai World Financial Center",
+    "country": "China",
+    "city": "Shanghai",
+    "category": "Skyscrapers",
+    "height_m": "492 m / 1614 ft",
+    "year_built": 2008,
+    "thumbnail": "Mini/shanghai-world-financial-center.mini.webp",
+    "image_2d": "Buildings2D/shanghai-world-financial-center.webp"
+  },
+  {
+    "id": "taipei-101",
+    "name": "Taipei 101",
+    "country": "Taiwan",
+    "city": "Taipei",
+    "category": "Skyscrapers",
+    "height_m": "508 m / 1667 ft",
+    "year_built": 2004,
+    "thumbnail": "Mini/taipei-101.mini.webp",
+    "image_2d": "Buildings2D/taipei-101.webp"
+  }
 
 ]
