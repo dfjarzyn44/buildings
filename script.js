@@ -75,7 +75,6 @@ function updateDynamicPadding() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  // Kwestia 3: Zapas poziomy w px ekranu (po włączeniu dymków zwiększamy, by nie ucinało skrajnych etykiet)
   const minLeftPadScreen = hasLabels ? 80 : 55;
   const minRightPadScreen = hasLabels ? 90 : 60;
 
@@ -120,8 +119,12 @@ function updateBuildingUI() {
   let maxBuildingHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
-    if (img && img.offsetHeight > maxBuildingHeight) {
-      maxBuildingHeight = img.offsetHeight;
+    if (img) {
+      const scale = parseFloat(img.dataset.scale || 1);
+      const effHeight = img.offsetHeight * scale;
+      if (effHeight > maxBuildingHeight) {
+        maxBuildingHeight = effHeight;
+      }
     }
   });
 
@@ -132,7 +135,8 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const currentHeight = img.offsetHeight;
+    const scale = parseFloat(img.dataset.scale || 1);
+    const currentHeight = img.offsetHeight * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
 
     let rowOffsetScreen = 30;
@@ -180,8 +184,13 @@ function updateStageHeight() {
 
   let maxBHeight = 0;
   buildingItems.forEach(item => {
-    if (item.offsetHeight > maxBHeight) {
-      maxBHeight = item.offsetHeight;
+    const img = item.querySelector('img');
+    if (img) {
+      const scale = parseFloat(img.dataset.scale || 1);
+      const effHeight = img.offsetHeight * scale;
+      if (effHeight > maxBHeight) {
+        maxBHeight = effHeight;
+      }
     }
   });
 
@@ -192,7 +201,6 @@ function updateStageHeight() {
 
   const wrapperH = wrapper.clientHeight || 500;
 
-  // Kwestia 1 i 2: 270px rezerwy ekranowej dla etykiet, 80px w widoku czystym
   const topPaddingScreen = hasLabels ? 270 : 80;
   const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
   const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
@@ -602,13 +610,15 @@ function addToStage(building) {
     uiContent += `<div class="building-years">${builtStr}</div>`;
   }
 
+  const scaleMultiplier = (building.scale_multiplier !== undefined && building.scale_multiplier !== null) ? Number(building.scale_multiplier) : 1;
+
   item.innerHTML = `
     <div class="building-ui">
       <div class="building-info">
         ${uiContent}
       </div>
     </div>
-    <img src="${building.image_2d}" alt="${building.name}">
+    <img src="${building.image_2d}" alt="${building.name}" style="transform: scale(${scaleMultiplier}); transform-origin: bottom center;" data-scale="${scaleMultiplier}">
   `;
 
   const img = item.querySelector('img');
