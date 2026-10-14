@@ -8,7 +8,8 @@
     "height_m": "146 m / 481 ft",
     "year_built": "2560 BC",
     "thumbnail": "Mini/cheops-pyramid.mini.webp",
-    "image_2d": "Buildings2D/cheops-pyramid.webp"
+    "image_2d": "Buildings2D/cheops-pyramid.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "chrysler-building",
@@ -19,7 +20,8 @@
     "height_m": "319 m / 1046 ft",
     "year_built": 1930,
     "thumbnail": "Mini/Chrysler-building.mini.webp",
-    "image_2d": "Buildings2D/Chrysler-building.webp"
+    "image_2d": "Buildings2D/Chrysler-building.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "colosseum",
@@ -30,7 +32,8 @@
     "height_m": "48 m / 157 ft",
     "year_built": 80,
     "thumbnail": "Mini/Colloseum.mini.webp",
-    "image_2d": "Buildings2D/Colloseum.webp"
+    "image_2d": "Buildings2D/Colloseum.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "eiffel-tower",
@@ -41,7 +44,8 @@
     "height_m": "300 m / 984 ft",
     "year_built": 1889,
     "thumbnail": "Mini/eiffel-tower.mini.webp",
-    "image_2d": "Buildings2D/eiffel-tower.webp"
+    "image_2d": "Buildings2D/eiffel-tower.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "empire-state-building",
@@ -52,7 +56,8 @@
     "height_m": "443 m / 1454 ft",
     "year_built": 1931,
     "thumbnail": "Mini/empire-state-building.mini.webp",
-    "image_2d": "Buildings2D/empire-state-building.webp"
+    "image_2d": "Buildings2D/empire-state-building.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "moscow-state-university",
@@ -63,7 +68,8 @@
     "height_m": "240 m / 787 ft",
     "year_built": 1953,
     "thumbnail": "Mini/moscow-university.mini.webp",
-    "image_2d": "Buildings2D/moscow-university.webp"
+    "image_2d": "Buildings2D/moscow-university.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "notre-dame",
@@ -74,7 +80,8 @@
     "height_m": "96 m / 226 ft",
     "year_built": 1345,
     "thumbnail": "Mini/Notredame.mini.webp",
-    "image_2d": "Buildings2D/notredame.sideview.webp"
+    "image_2d": "Buildings2D/notredame.sideview.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "pkin",
@@ -85,7 +92,8 @@
     "height_m": "237 m / 778 ft",
     "year_built": 1955,
     "thumbnail": "Mini/PKiN.mini.webp",
-    "image_2d": "Buildings2D/PKiN.webp"
+    "image_2d": "Buildings2D/PKiN.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "statue-of-liberty",
@@ -96,7 +104,8 @@
     "height_m": "93 m / 305 ft",
     "year_built": 1886,
     "thumbnail": "Mini/statue-of-liberty.mini.webp",
-    "image_2d": "Buildings2D/statue-of-liberty.webp"
+    "image_2d": "Buildings2D/statue-of-liberty.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "the-shard",
@@ -107,7 +116,8 @@
     "height_m": "310 m / 1017 ft",
     "year_built": 2012,
     "thumbnail": "Mini/the-shard.mini.webp",
-    "image_2d": "Buildings2D/the-shard.webp"
+    "image_2d": "Buildings2D/the-shard.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "white-house",
@@ -118,7 +128,8 @@
     "height_m": "21 m / 70 ft",
     "year_built": 1800,
     "thumbnail": "Mini/white-house.mini.webp",
-    "image_2d": "Buildings2D/white-house.webp"
+    "image_2d": "Buildings2D/white-house.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "us-bank-tower",
@@ -129,7 +140,8 @@
     "height_m": "310 m / 1018 ft",
     "year_built": 1989,
     "thumbnail": "Mini/us-bank-tower.mini.webp",
-    "image_2d": "Buildings2D/us-bank-tower.webp"
+    "image_2d": "Buildings2D/us-bank-tower.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "burj-khalifa",
@@ -140,7 +152,8 @@
     "height_m": "828 m / 2717 ft",
     "year_built": 2010,
     "thumbnail": "Mini/burj-khalifa.mini.webp",
-    "image_2d": "Buildings2D/burj-khalifa.webp"
+    "image_2d": "Buildings2D/burj-khalifa.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "willis-tower",
@@ -151,7 +164,8 @@
     "height_m": "520 m / 1706 ft",
     "year_built": 1974,
     "thumbnail": "Mini/willis-tower.mini.webp",
-    "image_2d": "Buildings2D/willis-tower.webp"
+    "image_2d": "Buildings2D/willis-tower.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "taj-mahal",
@@ -162,7 +176,8 @@
     "height_m": "73 m / 240 ft",
     "year_built": 1653,
     "thumbnail": "Mini/taj-mahal.mini.webp",
-    "image_2d": "Buildings2D/taj-mahal.webp"
+    "image_2d": "Buildings2D/taj-mahal.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "cn-tower",
@@ -173,7 +188,8 @@
     "height_m": "553 m / 1815 ft",
     "year_built": 1976,
     "thumbnail": "Mini/cn-tower.mini.webp",
-    "image_2d": "Buildings2D/cn-tower.webp"
+    "image_2d": "Buildings2D/cn-tower.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "wtc-one",
@@ -184,7 +200,8 @@
     "height_m": "541 m / 1776 ft",
     "year_built": 2014,
     "thumbnail": "Mini/wtc-one.mini.webp",
-    "image_2d": "Buildings2D/wtc-one.webp"
+    "image_2d": "Buildings2D/wtc-one.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "salesforce-tower",
@@ -195,8 +212,9 @@
     "height_m": "326.1 m / 1070 ft",
     "year_built": 2018,
     "thumbnail": "Mini/salesforce-tower.mini.webp",
-    "image_2d": "Buildings2D/salesforce-tower.webp"
-},
+    "image_2d": "Buildings2D/salesforce-tower.webp",
+    "scale_multiplier": 1.0
+  },
   {
     "id": "burj-al-arab",
     "name": "Burj Al Arab",
@@ -206,7 +224,8 @@
     "height_m": "321 m / 1053 ft",
     "year_built": 1999,
     "thumbnail": "Mini/burj-al-arab.mini.webp",
-    "image_2d": "Buildings2D/burj-al-arab.webp"
+    "image_2d": "Buildings2D/burj-al-arab.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "shanghai-tower",
@@ -217,41 +236,45 @@
     "height_m": "632 m / 2073 ft",
     "year_built": 2015,
     "thumbnail": "Mini/shanghai-tower.mini.webp",
-    "image_2d": "Buildings2D/shanghai-tower.webp"},
-  
- {
-  "id": "varso-tower",
-  "name": "Varso Tower",
-  "country": "Poland",
-  "city": "Warsaw",
-  "category": "Skyscrapers",
-  "height_m": "310 m / 1017 ft",
-  "year_built": 2022,
-  "thumbnail": "Mini/varso-tower.mini.webp",
-  "image_2d": "Buildings2D/varso-tower.webp"
-},
+    "image_2d": "Buildings2D/shanghai-tower.webp",
+    "scale_multiplier": 1.0
+  },
   {
-  "id": "la-sagrada-familia",
-  "name": "Sagrada Família",
-  "country": "Spain",
-  "city": "Barcelona",
-  "category": "Religious Architecture",
-  "height_m": "172.5 m / 566 ft",
-  "year_built": "1882-2026",
-  "thumbnail": "Mini/la-sagrada-familia.mini.webp",
-  "image_2d": "Buildings2D/la-sagrada-familia.webp"
-},
+    "id": "varso-tower",
+    "name": "Varso Tower",
+    "country": "Poland",
+    "city": "Warsaw",
+    "category": "Skyscrapers",
+    "height_m": "310 m / 1017 ft",
+    "year_built": 2022,
+    "thumbnail": "Mini/varso-tower.mini.webp",
+    "image_2d": "Buildings2D/varso-tower.webp",
+    "scale_multiplier": 1.0
+  },
   {
-"id": "abraj-al-bait",
-"name": "Makkah Clock Tower",
-"country": "Saudi Arabia",
-"city": "Mecca",
-"category": "Skyscrapers & Hotels",
-"height_m": "601 m / 1972 ft",
-"year_built": 2012,
-"thumbnail": "Mini/abraj-al-bait.mini.webp",
-"image_2d": "Buildings2D/abraj-al-bait.webp"
-},
+    "id": "la-sagrada-familia",
+    "name": "Sagrada Família",
+    "country": "Spain",
+    "city": "Barcelona",
+    "category": "Religious Architecture",
+    "height_m": "172.5 m / 566 ft",
+    "year_built": "1882-2026",
+    "thumbnail": "Mini/la-sagrada-familia.mini.webp",
+    "image_2d": "Buildings2D/la-sagrada-familia.webp",
+    "scale_multiplier": 1.0
+  },
+  {
+    "id": "abraj-al-bait",
+    "name": "Makkah Clock Tower",
+    "country": "Saudi Arabia",
+    "city": "Mecca",
+    "category": "Skyscrapers & Hotels",
+    "height_m": "601 m / 1972 ft",
+    "year_built": 2012,
+    "thumbnail": "Mini/abraj-al-bait.mini.webp",
+    "image_2d": "Buildings2D/abraj-al-bait.webp",
+    "scale_multiplier": 1.0
+  },
   {
     "id": "merdeka-118",
     "name": "Merdeka 118",
@@ -261,7 +284,8 @@
     "height_m": "678.9 m / 2227 ft",
     "year_built": 2023,
     "thumbnail": "Mini/merdeka-118.mini.webp",
-    "image_2d": "Buildings2D/merdeka-118.webp"
+    "image_2d": "Buildings2D/merdeka-118.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "shanghai-world-financial-center",
@@ -272,7 +296,8 @@
     "height_m": "492 m / 1614 ft",
     "year_built": 2008,
     "thumbnail": "Mini/shanghai-world-financial-center.mini.webp",
-    "image_2d": "Buildings2D/shanghai-world-financial-center.webp"
+    "image_2d": "Buildings2D/shanghai-world-financial-center.webp",
+    "scale_multiplier": 1.0
   },
   {
     "id": "taipei-101",
@@ -283,7 +308,7 @@
     "height_m": "508 m / 1667 ft",
     "year_built": 2004,
     "thumbnail": "Mini/taipei-101.mini.webp",
-    "image_2d": "Buildings2D/taipei-101.webp"
+    "image_2d": "Buildings2D/taipei-101.webp",
+    "scale_multiplier": 1.0
   }
-
 ]
