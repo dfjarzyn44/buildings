@@ -1,4 +1,5 @@
 const PIXELS_PER_METER = 10;
+const MIN_SCREEN_PADDING = 55;
 
 let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
@@ -8,6 +9,20 @@ let addedBuildings = new Set();
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
+  #stageWrapper {
+    touch-action: pan-x pan-y !important;
+  }
+  #stage {
+    gap: 280px !important;
+    box-sizing: border-box;
+    transform-origin: 0 0 !important;
+  }
+  .stage-wrapper.fullscreen #toggleFsBtn {
+    position: fixed !important;
+    top: 15px !important;
+    right: 15px !important;
+    z-index: 9999 !important;
+  }
   .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
   .card.added img { opacity: 0.85; }
   .card-remove-indicator { 
@@ -23,22 +38,50 @@ injectedStyles.innerHTML = `
   .building-ui {
     transition: transform 0.1s ease-out;
   }
-  #stage {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-end !important;
-    gap: 40px !important;
-    position: relative;
+  .grid-label {
+    position: absolute;
+    left: 4px;
+    transform-origin: left center !important;
+    white-space: nowrap;
   }
-  .building-item {
-    position: relative !important;
-    flex-shrink: 0 !important;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .building-info {
+    max-width: 120px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    text-align: center;
+  }
+  .building-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-weight: bold;
+    word-break: break-word;
+  }
+  .building-height, .building-years {
+    white-space: nowrap !important;
+    font-size: 10px !important;
   }
 `;
 document.head.appendChild(injectedStyles);
+
+function updateDynamicPadding() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
+  // Kwestia 3: Zapas poziomy w px ekranu (po włączeniu dymków zwiększamy, by nie ucinało skrajnych etykiet)
+  const minLeftPadScreen = hasLabels ? 80 : 55;
+  const minRightPadScreen = hasLabels ? 90 : 60;
+
+  stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
+  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
+}
 
 async function loadData() {
   try {
@@ -63,7 +106,6 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-// STABILNY UKŁAD 3-RZĘDOWY (GWARANCJA ROZKŁADU)
 function updateBuildingUI() {
   const inverseScale = 1 / currentZoom;
 
@@ -93,7 +135,7 @@ function updateBuildingUI() {
     const currentHeight = img.offsetHeight;
     const heightDiff = maxBuildingHeight - currentHeight;
 
-    let rowOffsetScreen = 30; 
+    let rowOffsetScreen = 30;
 
     if (!isZoomedIn && buildingItems.length > 1) {
       const rowChoice = index % 3;
@@ -118,13 +160,17 @@ function toggleFullscreen() {
 
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
-    btn.innerText = " Exit Canvas";
+    document.body.classList.add('no-scroll');
+    if (btn) btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
-    btn.innerText = " Open Interactive Canvas";
+    document.body.classList.remove('no-scroll');
+    if (btn) btn.innerText = " Open Interactive Canvas";
   }
 
-  fitToStage();
+  setTimeout(() => {
+    fitToStage();
+  }, 50);
 }
 
 function updateStageHeight() {
@@ -133,15 +179,25 @@ function updateStageHeight() {
   const buildingItems = stage.querySelectorAll('.building-item');
 
   let maxBHeight = 0;
-
   buildingItems.forEach(item => {
     if (item.offsetHeight > maxBHeight) {
       maxBHeight = item.offsetHeight;
     }
   });
 
-  const wrapperH = wrapper.clientHeight;
-  const neededH = maxBHeight > 0 ? (maxBHeight + 1500) : wrapperH;
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
+  const wrapperH = wrapper.clientHeight || 500;
+
+  // Kwestia 1 i 2: 270px rezerwy ekranowej dla etykiet, 80px w widoku czystym
+  const topPaddingScreen = hasLabels ? 270 : 80;
+  const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
+  const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
+
+  const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -171,6 +227,8 @@ function clampPan() {
 function applyTransform() {
   if (!ticking) {
     requestAnimationFrame(() => {
+      updateDynamicPadding();
+      updateDimensionsCache();
       clampPan();
 
       const displayZoom = Math.round(currentZoom * 100);
@@ -199,6 +257,7 @@ function initInteractions() {
   if (showNamesCheckbox) {
     showNamesCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-names', !e.target.checked);
+      fitToStage();
     });
   }
 
@@ -206,6 +265,7 @@ function initInteractions() {
   if (showHeightCheckbox) {
     showHeightCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-height', !e.target.checked);
+      fitToStage();
     });
   }
 
@@ -213,6 +273,7 @@ function initInteractions() {
   if (showYearsCheckbox) {
     showYearsCheckbox.addEventListener('change', (e) => {
       stage.classList.toggle('hide-years', !e.target.checked);
+      fitToStage();
     });
   }
 
@@ -240,15 +301,19 @@ function initInteractions() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    panX = mouseX - (mouseX - panX) * actualFactor;
+    panX = mouseX - MIN_SCREEN_PADDING - (mouseX - panX - MIN_SCREEN_PADDING) * actualFactor;
     panY = mouseY - (mouseY - panY) * actualFactor;
+    
     currentZoom = newZoom;
-
     applyTransform();
   }, { passive: false });
 
   let isDown = false;
   let startX, startY;
+  let touchStartDist = 0;
+  let touchStartZoom = 1;
+  let touchStartPanX = 0, touchStartPanY = 0;
+  let touchStartMidX = 0, touchStartMidY = 0;
 
   wrapper.addEventListener('mousedown', (e) => {
     if (!isFullscreen) return;
@@ -268,10 +333,14 @@ function initInteractions() {
     applyTransform();
   });
 
-  let lastTouchDist = 0;
-
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
+
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
 
     if (e.touches.length === 1) {
       isDown = true;
@@ -279,49 +348,65 @@ function initInteractions() {
       startY = e.touches[0].clientY - panY;
     } else if (e.touches.length === 2) {
       isDown = false;
-      lastTouchDist = Math.hypot(
+      touchStartDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      const rect = wrapper.getBoundingClientRect();
+      touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      touchStartZoom = currentZoom;
+      touchStartPanX = panX;
+      touchStartPanY = panY;
     }
   }, { passive: true });
 
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
 
-    const rect = wrapper.getBoundingClientRect();
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
 
-    if (e.touches.length === 1 && isDown) {
-      panX = e.touches[0].clientX - startX;
-      panY = e.touches[0].clientY - startY;
-      applyTransform();
-    } else if (e.touches.length === 2 && lastTouchDist > 0) {
+    if (e.touches.length === 2) {
+      if (e.cancelable) e.preventDefault();
       const currentDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      if (currentDist === 0 || touchStartDist === 0) return;
 
-      if (currentDist === 0) return;
-
-      const factor = currentDist / lastTouchDist;
-      const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
-      const actualFactor = newZoom / currentZoom;
-
+      const rect = wrapper.getBoundingClientRect();
       const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-      panX = currentMidX - (currentMidX - panX) * actualFactor;
-      panY = currentMidY - (currentMidY - panY) * actualFactor;
-      currentZoom = newZoom;
-      lastTouchDist = currentDist;
+      const factor = currentDist / touchStartDist;
+      const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
+      const scaleFactor = newZoom / touchStartZoom;
 
+      panX = currentMidX - MIN_SCREEN_PADDING - (touchStartMidX - touchStartPanX - MIN_SCREEN_PADDING) * scaleFactor;
+      panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
+
+      currentZoom = newZoom;
+      applyTransform();
+    } else if (e.touches.length === 1 && isDown) {
+      panX = e.touches[0].clientX - startX;
+      panY = e.touches[0].clientY - startY;
       applyTransform();
     }
-  }, { passive: true });
+  }, { passive: false });
 
   wrapper.addEventListener('touchend', (e) => {
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
+
     if (e.touches.length < 2) {
-      lastTouchDist = 0;
+      touchStartDist = 0;
     }
     if (e.touches.length === 1) {
       isDown = true;
@@ -422,8 +507,7 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
-    const items = stage.querySelectorAll('.building-item');
-    items.forEach(item => item.remove());
+    stage.innerHTML = '';
   }
   addedBuildings.clear();
   filterData();
@@ -432,6 +516,7 @@ function clearStage() {
 
 function fitToStage() {
   updateStageHeight();
+  updateDynamicPadding();
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
@@ -454,6 +539,10 @@ function fitToStage() {
   }
 
   currentZoom = newZoom;
+
+  updateDynamicPadding();
+  updateDimensionsCache();
+
   panX = 0;
   panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
 
@@ -474,7 +563,7 @@ function removeBuilding(name) {
       item.remove();
     }
   });
-  
+
   filterData(); 
   fitToStage();
 }
@@ -484,6 +573,7 @@ function addToStage(building) {
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
+
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
