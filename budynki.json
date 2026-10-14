@@ -310,5 +310,17 @@
     "thumbnail": "Mini/taipei-101.mini.webp",
     "image_2d": "Buildings2D/taipei-101.webp",
     "scale_multiplier": 1.0
-  }
+  },
+  {
+    "id": "leaning-tower-of-pisa",
+    "name": "Leaning Tower of Pisa",
+    "country": "Italy",
+    "city": "Pisa",
+    "category": "Medieval Architecture",
+    "height_m": "58.4 m / 192 ft (55.8 m / 183 ft)",
+    "year_built": 1372,
+    "thumbnail": "Mini/pisa-tower.mini.webp",
+    "image_2d": "Buildings2D/pisa-tower.webp",
+    "scale_multiplier": 0.5
+}
 ]
