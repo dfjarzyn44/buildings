@@ -52,11 +52,9 @@ function renderGrid(data) {
     card.className = 'building-card';
     card.innerHTML = `
       <img src="${building.thumbnail}" alt="${building.name}" loading="lazy">
-      <div class="card-content">
-        <h3>${building.name}</h3>
-        <p>${building.city}, ${building.country}</p>
-        <span>${building.height_m}</span>
-      </div>
+      <h3>${building.name}</h3>
+      <p>${building.city}, ${building.country}</p>
+      <span>${building.height_m}</span>
     `;
     card.addEventListener('click', () => addBuildingToStage(building));
     gridEl.appendChild(card);
