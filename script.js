@@ -1,120 +1,37 @@
 const PIXELS_PER_METER = 10;
 const MIN_SCREEN_PADDING = 55;
 
-let buildingsData = [];
-let currentZoom = 1;
-let panX = 0;
-let panY = 0;
+let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
 let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
 let addedBuildings = new Set(); 
 
-// Wstrzykiwanie stylów pomocniczych dla płótna
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stageWrapper {
     touch-action: pan-x pan-y !important;
-    position: relative;
-    overflow: hidden;
-    background: #f0f2f5;
-    width: 100%;
-    height: 600px;
-  }
-  #stageWrapper.fullscreen {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 9999 !important;
-    background: #ffffff !important;
   }
   #stage {
-    position: absolute;
-    display: flex;
-    align-items: flex-end;
-    gap: 40px;
-    padding: 50px;
+    gap: 280px !important;
     box-sizing: border-box;
     transform-origin: 0 0 !important;
-    min-height: 100%;
   }
-  .stage-building-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    cursor: grab;
-    flex-shrink: 0;
-  }
-  .stage-building-item:active {
-    cursor: grabbing;
-  }
-  .stage-building-item img {
-    display: block;
-    object-fit: contain;
-    width: auto;
-    max-height: none !important;
-  }
-  .building-info {
-    text-align: center;
-    margin-top: 8px;
-    font-family: sans-serif;
-    font-size: 13px;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-  .building-info .b-name { font-weight: bold; display: block; }
-  .building-info .b-height, .building-info .b-year { color: #555; display: block; font-size: 11px; }
-
-  /* Ukrywanie elementów w zależności od klas na stage */
-  #stage.hide-names .b-name { display: none !important; }
-  #stage.hide-height .b-height { display: none !important; }
-  #stage.hide-years .b-year { display: none !important; }
-
-  .close-fullscreen-btn {
-    display: none;
-    position: fixed;
-    top: 15px;
-    right: 15px;
-    z-index: 10000;
-    padding: 10px 16px;
-    background: #ff4757;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  .stage-wrapper.fullscreen .close-fullscreen-btn {
-    display: block;
-  }
-  
-  /* Siatka w tle */
-  .grid-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background-size: 100px 100px;
-    background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
-    display: none;
-  }
-  #stage.show-grid .grid-overlay {
-    display: block;
+  .stage-wrapper.fullscreen #toggleFsBtn {
+    position: fixed !important;
+    top: 15px !important;
+    right: 15px !important;
+    z-index: 10000 !important;
   }
 `;
 document.head.appendChild(injectedStyles);
 
-// Inicjalizacja po załadowaniu DOM
 document.addEventListener('DOMContentLoaded', () => {
   loadBuildings();
   setupUIEventListeners();
   setupPanAndZoom();
 });
 
-// Pobieranie danych z JSON-a
 async function loadBuildings() {
   try {
     const response = await fetch('buildings.json');
@@ -125,7 +42,6 @@ async function loadBuildings() {
   }
 }
 
-// Wyświetlanie kafelków w siatce wyboru
 function renderGrid(data) {
   const gridEl = document.getElementById('buildingsGrid');
   if (!gridEl) return;
@@ -147,26 +63,21 @@ function renderGrid(data) {
   });
 }
 
-// Wyciąganie wartości numerycznej metrów z stringa np. "146 m / 481 ft"
 function parseHeightMeters(heightStr) {
   if (!heightStr) return 0;
   const match = String(heightStr).match(/^([\d.]+)\s*m/);
   return match ? parseFloat(match[1]) : parseFloat(heightStr) || 0;
 }
 
-// Dodawanie budynku na interaktywne płótno
 function addBuildingToStage(building) {
   if (addedBuildings.has(building.id)) return;
   addedBuildings.add(building.id);
 
   const stage = document.getElementById('stage');
-  
   const heightMeters = parseHeightMeters(building.height_m);
   
-  // KLUCZOWY ELEMENT: Pobranie mnożnika skali z JSON (domyślnie 1.0)
+  // Dynamiczne skalowanie uwzględniające mnożnik z JSON-a
   const scaleMultiplier = building.scale_multiplier !== undefined ? building.scale_multiplier : 1.0;
-  
-  // Ostateczna wysokość w pikselach na płótnie uwzględniająca mnożnik detali
   const calculatedHeightPx = heightMeters * PIXELS_PER_METER * scaleMultiplier;
 
   const itemEl = document.createElement('div');
@@ -183,7 +94,6 @@ function addBuildingToStage(building) {
     <button class="remove-btn" style="position:absolute; top:0; right:0; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:10px; cursor:pointer; display:none;">×</button>
   `;
 
-  // Pokazuj przycisk usuwania po najechaniu
   itemEl.addEventListener('mouseenter', () => itemEl.querySelector('.remove-btn').style.display = 'block');
   itemEl.addEventListener('mouseleave', () => itemEl.querySelector('.remove-btn').style.display = 'none');
   
@@ -196,16 +106,12 @@ function addBuildingToStage(building) {
   stage.appendChild(itemEl);
 }
 
-// Czyszczenie płótna
 function clearStage() {
   const stage = document.getElementById('stage');
-  const gridOverlay = document.getElementById('gridOverlay');
   stage.innerHTML = '';
-  stage.appendChild(gridOverlay);
   addedBuildings.clear();
 }
 
-// Przełączanie trybu pełnoekranowego
 function toggleFullscreen() {
   isFullscreen = !isFullscreen;
   const wrapper = document.getElementById('stageWrapper');
@@ -214,9 +120,7 @@ function toggleFullscreen() {
   btn.textContent = isFullscreen ? 'Close Interactive Canvas' : 'Open Interactive Canvas';
 }
 
-// Obsługa interfejsu (wyszukiwarka, checkboxy)
 function setupUIEventListeners() {
-  // Wyszukiwarka
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
@@ -230,13 +134,12 @@ function setupUIEventListeners() {
     });
   }
 
-  // Checkboxy widoczności etykiet i siatki
   const stage = document.getElementById('stage');
   
   const namesCb = document.getElementById('showNamesCheckbox');
   if (namesCb) {
     namesCb.addEventListener('change', (e) => stage.classList.toggle('hide-names', !e.target.checked));
-    stage.classList.add('hide-names'); // domyślnie odznaczone zgodnie z HTML
+    stage.classList.add('hide-names');
   }
 
   const heightCb = document.getElementById('showHeightCheckbox');
@@ -257,16 +160,12 @@ function setupUIEventListeners() {
   }
 }
 
-// Logika przesuwania (pan) i przybliżania (zoom) płótna myszką/dotykiem
 function setupPanAndZoom() {
   const wrapper = document.getElementById('stageWrapper');
-  const stage = document.getElementById('stage');
-
   let isDragging = false;
   let startX = 0, startY = 0;
 
   wrapper.addEventListener('mousedown', (e) => {
-    // Nie inicjuj panowania, jeśli kliknięto bezpośrednio w element budynku lub przycisk
     if (e.target.closest('.stage-building-item')) return;
     isDragging = true;
     startX = e.clientX - panX;
@@ -286,7 +185,6 @@ function setupPanAndZoom() {
     wrapper.style.cursor = 'default';
   });
 
-  // Zoom kółkiem myszy
   wrapper.addEventListener('wheel', (e) => {
     e.preventDefault();
     const zoomIntensity = 0.1;
@@ -300,7 +198,6 @@ function setupPanAndZoom() {
 
     currentZoom = Math.max(0.2, Math.min(5, currentZoom));
 
-    // Przybliżanie względem kursora myszy
     const rect = wrapper.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
