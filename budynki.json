@@ -333,7 +333,7 @@
     "year_built": "1931",
     "thumbnail": "Mini/rio-christ-statue.mini.webp",
     "image_2d": "Buildings2D/rio-christ-statue.webp",
-    "scale_multiplier": 0.5
+    "scale_multiplier": 0.25
   },
   {
     "id": "sydney-opera-house",
