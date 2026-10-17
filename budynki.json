@@ -322,5 +322,30 @@
     "thumbnail": "Mini/pisa-tower.mini.webp",
     "image_2d": "Buildings2D/pisa-tower.webp",
     "scale_multiplier": 0.5
+  },
+  {
+    "id": "rio-christ-statue",
+    "name": "Christ the Redeemer",
+    "country": "Brazil",
+    "city": "Rio de Janeiro",
+    "category": "Monuments",
+    "height_m": "38 m / 125 ft",
+    "year_built": "1931",
+    "thumbnail": "Mini/rio-christ-statue.mini.webp",
+    "image_2d": "Buildings2D/rio-christ-statue.webp",
+    "scale_multiplier": 0.5
+  },
+  {
+    "id": "sydney-opera-house",
+    "name": "Sydney Opera House",
+    "country": "Australia",
+    "city": "Sydney",
+    "category": "Modern Architecture",
+    "height_m": "65 m / 213 ft",
+    "year_built": "1973",
+    "thumbnail": "Mini/sydney-opera-house.mini.webp",
+    "image_2d": "Buildings2D/sydney-opera-house.webp",
+    "scale_multiplier": 1.0
   }
+
 ]
