@@ -13,7 +13,6 @@ injectedStyles.innerHTML = `
     touch-action: pan-x pan-y !important;
   }
   #stage {
-    gap: 280px !important;
     box-sizing: border-box;
     transform-origin: 0 0 !important;
   }
@@ -138,6 +137,10 @@ function updateBuildingUI() {
     const scale = parseFloat(img.dataset.scale || 1);
     const currentHeight = img.offsetHeight * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
+
+    // Dynamiczny margines oparty na efektywnej wysokości budynku (np. 15% jego wysokości)
+    const dynamicMargin = Math.round(currentHeight * 0.15);
+    item.style.marginRight = `${dynamicMargin}px`;
 
     let rowOffsetScreen = 30;
 
