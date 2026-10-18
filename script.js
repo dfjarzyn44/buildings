@@ -11,13 +11,10 @@ const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stageWrapper {
     touch-action: pan-x pan-y !important;
-    overflow: hidden !important;
-    will-change: transform;
   }
   #stage {
     box-sizing: border-box;
     transform-origin: 0 0 !important;
-    will-change: transform;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -440,6 +437,11 @@ function initInteractions() {
       isDown = false;
     }
   });
+
+  window.addEventListener('resize', () => {
+    fitToStage();
+    renderHeightGrid();
+  });
 }
 
 function renderHeightGrid() {
@@ -526,6 +528,7 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
+    // Usuwamy tylko budynki, zostawiając gridOverlay w spokoju!
     const items = stage.querySelectorAll('.building-item');
     items.forEach(item => item.remove());
   }
@@ -553,18 +556,7 @@ function fitToStage() {
 
   const scaleX = stageDim.wrapperW / stageDim.stageW;
   const scaleY = stageDim.wrapperH / stageDim.stageH;
-
-  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
-  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
-  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-  const hasLabels = showNames || showHeight || showYears;
-
-  let newZoom;
-  if (!hasLabels) {
-    newZoom = scaleY;
-  } else {
-    newZoom = Math.min(scaleX, scaleY, 1);
-  }
+  let newZoom = Math.min(scaleX, scaleY, 1);
 
   if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
     newZoom = 1;
