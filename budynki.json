@@ -346,6 +346,18 @@
     "thumbnail": "Mini/sydney-opera-house.mini.webp",
     "image_2d": "Buildings2D/sydney-opera-house.webp",
     "scale_multiplier": 1.0
-  }
+  },
+  {
+  "id": "st-basil-cathedral",
+  "name": "Saint Basil's Cathedral",
+  "country": "Russia",
+  "city": "Moscow",
+  "category": "Churches & Cathedrals",
+  "height_m": "65 m / 213 ft",
+  "year_built": 1561,
+  "thumbnail": "Mini/st-basil-cathedral.mini.webp",
+  "image_2d": "Buildings2D/st-basil-cathedral.webp",
+  "scale_multiplier": 0.5
+}
 
 ]
