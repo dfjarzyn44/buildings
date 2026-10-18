@@ -7,6 +7,80 @@ let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
 let addedBuildings = new Set(); 
 
+const injectedStyles = document.createElement('style');
+injectedStyles.innerHTML = `
+  #stageWrapper {
+    touch-action: pan-x pan-y !important;
+  }
+  #stage {
+    box-sizing: border-box;
+    transform-origin: 0 0 !important;
+  }
+  .stage-wrapper.fullscreen #toggleFsBtn {
+    position: fixed !important;
+    top: 15px !important;
+    right: 15px !important;
+    z-index: 9999 !important;
+  }
+  .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
+  .card.added img { opacity: 0.85; }
+  .card-remove-indicator { 
+    position: absolute; 
+    top: 5px; 
+    right: 8px; 
+    color: #dc3545; 
+    font-size: 22px; 
+    font-weight: bold; 
+    z-index: 10; 
+    pointer-events: none; 
+  }
+  .building-ui {
+    transition: transform 0.1s ease-out;
+  }
+  .grid-label {
+    position: absolute;
+    left: 4px;
+    transform-origin: left center !important;
+    white-space: nowrap;
+  }
+  .building-info {
+    max-width: 120px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    text-align: center;
+  }
+  .building-name {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-weight: bold;
+    word-break: break-word;
+  }
+  .building-height, .building-years {
+    white-space: nowrap !important;
+    font-size: 10px !important;
+  }
+`;
+document.head.appendChild(injectedStyles);
+
+function updateDynamicPadding() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
+  const minLeftPadScreen = hasLabels ? 80 : 55;
+  const minRightPadScreen = hasLabels ? 90 : 60;
+
+  stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
+  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
+}
+
 async function loadData() {
   try {
     const response = await fetch('budynki.json');
@@ -27,22 +101,6 @@ function updateDimensionsCache() {
   stageDim.wrapperH = wrapper.clientHeight || 1;
   stageDim.stageW = stage.scrollWidth || 1;
   stageDim.stageH = stage.offsetHeight || 1;
-}
-
-function updateDynamicPadding() {
-  const stage = document.getElementById('stage');
-  if (!stage) return;
-
-  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
-  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
-  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-  const hasLabels = showNames || showHeight || showYears;
-
-  const minLeftPadScreen = hasLabels ? 80 : 55;
-  const minRightPadScreen = hasLabels ? 90 : 60;
-
-  stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
-  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
 }
 
 function updateBuildingUI() {
@@ -110,11 +168,11 @@ function toggleFullscreen() {
   if (isFullscreen) {
     wrapper.classList.add('fullscreen');
     document.body.classList.add('no-scroll');
-    if (btn) btn.innerText = " Zamknij pełny ekran";
+    if (btn) btn.innerText = " Exit Canvas";
   } else {
     wrapper.classList.remove('fullscreen');
     document.body.classList.remove('no-scroll');
-    if (btn) btn.innerText = " Otwórz interaktywne płótno";
+    if (btn) btn.innerText = " Open Interactive Canvas";
   }
 
   setTimeout(() => {
@@ -470,6 +528,7 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
+    // Usuwamy tylko budynki, zostawiając gridOverlay w spokoju!
     const items = stage.querySelectorAll('.building-item');
     items.forEach(item => item.remove());
   }
