@@ -119,7 +119,8 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (img) {
       const scale = parseFloat(img.dataset.scale || 1);
-      const effHeight = img.offsetHeight * scale;
+      const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
+      const effHeight = imgH * scale;
       if (effHeight > maxBuildingHeight) {
         maxBuildingHeight = effHeight;
       }
@@ -134,7 +135,8 @@ function updateBuildingUI() {
     if (!ui || !img) return;
 
     const scale = parseFloat(img.dataset.scale || 1);
-    const currentHeight = img.offsetHeight * scale;
+    const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
+    const currentHeight = imgH * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
 
     const dynamicMargin = Math.round(currentHeight * 0.15);
@@ -183,7 +185,6 @@ function updateStageHeight() {
   const stage = document.getElementById('stage');
   const buildingItems = stage.querySelectorAll('.building-item');
 
-  // Jeśli nie ma budynków, zdejmujemy sztywne ograniczenie wysokości (tak jak przy starcie strony)
   if (buildingItems.length === 0) {
     stage.style.height = '';
     renderHeightGrid();
@@ -195,7 +196,8 @@ function updateStageHeight() {
     const img = item.querySelector('img');
     if (img) {
       const scale = parseFloat(img.dataset.scale || 1);
-      const effHeight = img.offsetHeight * scale;
+      const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
+      const effHeight = imgH * scale;
       if (effHeight > maxBHeight) {
         maxBHeight = effHeight;
       }
@@ -633,9 +635,17 @@ function addToStage(building) {
   `;
 
   const img = item.querySelector('img');
-  img.onload = () => {
+  
+  const handleImageReady = () => {
     fitToStage();
   };
+
+  // Obsługa zarówno nowych, jak i zacachowanych obrazków (które mają już img.complete)
+  if (img.complete) {
+    requestAnimationFrame(handleImageReady);
+  } else {
+    img.onload = handleImageReady;
+  }
 
   stage.appendChild(item);
   filterData(); 
