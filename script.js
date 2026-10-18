@@ -86,7 +86,6 @@ async function loadData() {
     const response = await fetch('budynki.json');
     buildingsData = await response.json();
     renderGrid(buildingsData);
-    setupFilters();
     initInteractions();
     renderHeightGrid();
   } catch (e) {
@@ -138,7 +137,6 @@ function updateBuildingUI() {
     const currentHeight = img.offsetHeight * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
 
-    // Dynamiczny margines oparty na efektywnej wysokości budynku (np. 15% jego wysokości)
     const dynamicMargin = Math.round(currentHeight * 0.15);
     item.style.marginRight = `${dynamicMargin}px`;
 
@@ -288,14 +286,18 @@ function initInteractions() {
     });
   }
 
+  // Stabilizacja i domyślne włączenie siatki przy starcie
   const showGridCheckbox = document.getElementById('showGridCheckbox');
   if (showGridCheckbox) {
+    showGridCheckbox.checked = true; 
     showGridCheckbox.addEventListener('change', toggleGridControls);
   }
 
   document.querySelectorAll('input[name="gridUnit"]').forEach(radio => {
     radio.addEventListener('change', renderHeightGrid);
   });
+
+  toggleGridControls(); // Wymuszenie poprawnej inicjalizacji stanu siatki
 
   const wrapper = document.getElementById('stageWrapper');
 
@@ -666,6 +668,8 @@ function renderGrid(data) {
     grid.appendChild(card);
   });
 }
+
+setupFilters();
 
 function setupFilters() {
   const searchInput = document.getElementById('searchInput');
