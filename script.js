@@ -528,7 +528,6 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
-    // Usuwamy tylko budynki, zostawiając gridOverlay w spokoju!
     const items = stage.querySelectorAll('.building-item');
     items.forEach(item => item.remove());
   }
@@ -556,7 +555,16 @@ function fitToStage() {
 
   const scaleX = stageDim.wrapperW / stageDim.stageW;
   const scaleY = stageDim.wrapperH / stageDim.stageH;
-  let newZoom = Math.min(scaleX, scaleY, 1);
+
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
+  let newZoom = Math.min(scaleX, scaleY);
+  if (hasLabels) {
+    newZoom = Math.min(newZoom, 1);
+  }
 
   if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
     newZoom = 1;
