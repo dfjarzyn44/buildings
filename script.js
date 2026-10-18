@@ -78,7 +78,7 @@ function updateDynamicPadding() {
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
   
-  // Prawy padding w jednostkach płótna ustawiony ściśle na 100px
+  // Prawy bufor płótna ustawiony sztywno na 100px
   stage.style.paddingRight = '100px';
 }
 
@@ -212,14 +212,12 @@ function updateStageHeight() {
 
   const wrapperH = wrapper.clientHeight || 500;
 
-  const topPaddingScreen = hasLabels ? 270 : 80;
-  const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
-  const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
+  // Logika dymków: uwzględniamy przestrzeń na górze, gdy dymki są włączone
+  const topBuffer = hasLabels ? 250 : 80;
+  const neededH = maxBHeight > 0 ? (maxBHeight + topBuffer) : wrapperH;
 
-  const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
-
-  // Zwiększony bezpieczny limit do 8000px, żeby giganty >500m (jak CN Tower) nie miały uciętych czubków
-  const safeH = Math.min(neededH, 8000);
+  // Podniesiono bezpieczny limit do 15000px, żeby najwyższe wieżowce świata nigdy nie miały uciętych czubków
+  const safeH = Math.min(Math.max(neededH, wrapperH), 15000);
 
   stage.style.height = safeH + 'px';
   renderHeightGrid();
