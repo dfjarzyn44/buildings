@@ -75,11 +75,11 @@ function updateDynamicPadding() {
   const hasLabels = showNames || showHeight || showYears;
 
   const minLeftPadScreen = hasLabels ? 80 : 55;
-  // Stały, bezpieczny margines na prawym końcu (ok. 100px)
-  const minRightPadScreen = 100;
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
-  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
+  
+  // Prawy padding w jednostkach płótna ustawiony ściśle na 100px
+  stage.style.paddingRight = '100px';
 }
 
 async function loadData() {
@@ -135,7 +135,7 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    // Sztywny odstęp 200px po prawej stronie każdego budynku (poza ostatnim)
+    // Stały odstęp 200px między wszystkimi budynkami (poza ostatnim)
     const isLast = (index === buildingItems.length - 1);
     item.style.marginRight = isLast ? '0px' : '200px';
 
@@ -159,7 +159,7 @@ function updateBuildingUI() {
     ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
 
-  // Upewniamy się, że siatka pokrywa pełną szerokość stage po dodaniu elementów
+  // Synchronizacja szerokości siatki z faktyczną szerokością stage'a
   const gridOverlay = document.getElementById('gridOverlay');
   const stage = document.getElementById('stage');
   if (gridOverlay && stage) {
@@ -218,7 +218,7 @@ function updateStageHeight() {
 
   const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
 
-  // Bezpieczne ograniczenie wysokości, żeby zapobiegać błędom renderowania warstw GPU (białe prostokąty)
+  // Bezpieczny limit wysokości zapobiegający białym plamom (GPU limit)
   const safeH = Math.min(neededH, 4000);
 
   stage.style.height = safeH + 'px';
