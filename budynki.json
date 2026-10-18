@@ -348,15 +348,15 @@
     "scale_multiplier": 1.0
   },
   {
-  "id": "st-basil-cathedral",
+  "id": "st-basils-cathedral",
   "name": "Saint Basil's Cathedral",
   "country": "Russia",
   "city": "Moscow",
   "category": "Churches & Cathedrals",
   "height_m": "65 m / 213 ft",
   "year_built": 1561,
-  "thumbnail": "Mini/st-basil-cathedral.mini.webp",
-  "image_2d": "Buildings2D/st-basil-cathedral.webp",
+  "thumbnail": "Mini/st-basils-cathedral.mini.webp",
+  "image_2d": "Buildings2D/st-basils-cathedral.webp",
   "scale_multiplier": 0.5
 }
 
