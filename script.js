@@ -203,7 +203,6 @@ function updateStageHeight() {
 
   const wrapperH = wrapper.clientHeight || 500;
   
-  // Standardowy, optymalny bufor na dymki bez przesadnego rozdmuchiwania płótna
   const topBuffer = hasLabels ? 120 : 40;
   const neededH = maxBHeight > 0 ? (maxBHeight + topBuffer) : wrapperH;
 
@@ -581,9 +580,17 @@ function addToStage(building) {
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
+  const existingItems = stage.querySelectorAll('.building-item');
+
+  // Natychmiastowe ustawienie marginesu 200px dla poprzedniego ostatniego elementu,
+  // żeby uniknąć efektu "przyklejenia do prawej" przed pełnym przeliczeniem.
+  if (existingItems.length > 0) {
+    existingItems[existingItems.length - 1].style.marginRight = '200px';
+  }
 
   const item = document.createElement('div');
   item.className = 'building-item';
+  item.style.marginRight = '0px'; // Nowy element jest ostatni, więc 0px na start
   item.dataset.name = building.name;
   item.dataset.height = building.height_m || 0;
 
@@ -621,11 +628,6 @@ function addToStage(building) {
     </div>
     <img src="${building.image_2d}" alt="${building.name}" style="transform: scale(${scaleMultiplier}); transform-origin: bottom center;" data-scale="${scaleMultiplier}">
   `;
-
-  const img = item.querySelector('img');
-  img.onload = () => {
-    fitToStage();
-  };
 
   stage.appendChild(item);
   filterData(); 
