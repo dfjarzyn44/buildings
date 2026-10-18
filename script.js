@@ -286,7 +286,6 @@ function initInteractions() {
     });
   }
 
-  // Stabilizacja i domyślne włączenie siatki przy starcie
   const showGridCheckbox = document.getElementById('showGridCheckbox');
   if (showGridCheckbox) {
     showGridCheckbox.checked = true; 
@@ -297,7 +296,7 @@ function initInteractions() {
     radio.addEventListener('change', renderHeightGrid);
   });
 
-  toggleGridControls(); // Wymuszenie poprawnej inicjalizacji stanu siatki
+  toggleGridControls();
 
   const wrapper = document.getElementById('stageWrapper');
 
@@ -525,6 +524,11 @@ function clearStage() {
   addedBuildings.clear();
   filterData();
   fitToStage();
+  
+  // Zapewnienie stabilności siatki po wyczyszczeniu płótna
+  setTimeout(() => {
+    renderHeightGrid();
+  }, 50);
 }
 
 function fitToStage() {
