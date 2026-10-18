@@ -213,13 +213,7 @@ select {
 /* STAGE CANVAS & GROUND */
 
 #stage {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  padding: 160px 30px 0 80px;      
   box-sizing: border-box;
-  min-width: 100%;
-  width: max-content;
   background: #ffffff;
   transform-origin: 0 0;
   position: absolute;
@@ -231,11 +225,11 @@ select {
 /* BUILDING ITEM */
 
 .building-item {
+  position: absolute;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-shrink: 0;
-  position: relative;
   margin: 0;
   padding: 0;
 }
@@ -320,20 +314,19 @@ select {
   }
 
   .grid {
-    display: grid;
-    grid-template-columns: none;
-    grid-template-rows: repeat(2, 1fr);
-    grid-auto-flow: column;
-    height: auto;
-    max-height: 420px;
+    display: flex;
+    flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
+    height: 185px;
     gap: 10px;
     padding: 10px;
     box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
   }
 
   .card {
+    flex: 0 0 150px;
     width: 150px;
     box-sizing: border-box;
   }
