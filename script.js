@@ -138,9 +138,8 @@ function updateBuildingUI() {
     const currentHeight = img.offsetHeight * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
 
-    // Dynamiczny margines oparty na efektywnej wysokości budynku (np. 15% jego wysokości)
-    const dynamicMargin = Math.round(currentHeight * 0.15);
-    item.style.marginRight = `${dynamicMargin}px`;
+    // Usunięto sztywny marginRight na rzecz dynamicznego rozkładania flex-boxem (space-evenly)
+    item.style.marginRight = '0px';
 
     let rowOffsetScreen = 30;
 
@@ -646,7 +645,7 @@ function renderGrid(data) {
 
     const city = b.city || '';
     const country = b.country || '';
-    const locationText = [city, country].filter(Boolean).join(', ');
+    locationText = [city, country].filter(Boolean).join(', ');
 
     card.innerHTML = `
       ${isAdded ? `<div class="card-remove-indicator">&times;</div>` : ''}
