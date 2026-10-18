@@ -75,10 +75,9 @@ function updateDynamicPadding() {
   const hasLabels = showNames || showHeight || showYears;
 
   const minLeftPadScreen = hasLabels ? 80 : 55;
-  const minRightPadScreen = hasLabels ? 90 : 60;
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
-  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
+  stage.style.paddingRight = '100px';
 }
 
 async function loadData() {
@@ -115,17 +114,14 @@ function updateBuildingUI() {
   const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
   if (buildingItems.length === 0) return;
 
-  let maxBuildingHeight = 0;
+  let maxBuildingMeters = 0;
   buildingItems.forEach(item => {
-    const img = item.querySelector('img');
-    if (img) {
-      const scale = parseFloat(img.dataset.scale || 1);
-      const effHeight = img.offsetHeight * scale;
-      if (effHeight > maxBuildingHeight) {
-        maxBuildingHeight = effHeight;
-      }
+    const heightM = parseFloat(item.dataset.height) || 0;
+    if (heightM > maxBuildingMeters) {
+      maxBuildingMeters = heightM;
     }
   });
+  const maxBuildingHeight = maxBuildingMeters * PIXELS_PER_METER;
 
   const isZoomedIn = currentZoom > 1.2;
 
@@ -134,13 +130,12 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    const scale = parseFloat(img.dataset.scale || 1);
-    const currentHeight = img.offsetHeight * scale;
-    const heightDiff = maxBuildingHeight - currentHeight;
+    const isLast = (index === buildingItems.length - 1);
+    item.style.marginRight = isLast ? '0px' : '200px';
 
-    // Dynamiczny margines oparty na efektywnej wysokości budynku (np. 15% jego wysokości)
-    const dynamicMargin = Math.round(currentHeight * 0.15);
-    item.style.marginRight = `${dynamicMargin}px`;
+    const heightM = parseFloat(item.dataset.height) || 0;
+    const currentHeight = heightM * PIXELS_PER_METER;
+    const heightDiff = maxBuildingHeight - currentHeight;
 
     let rowOffsetScreen = 30;
 
@@ -157,6 +152,12 @@ function updateBuildingUI() {
     const localY = -totalShiftPx * currentZoom;
     ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
+
+  const gridOverlay = document.getElementById('gridOverlay');
+  const stage = document.getElementById('stage');
+  if (gridOverlay && stage) {
+    gridOverlay.style.width = `${stage.scrollWidth}px`;
+  }
 }
 
 function toggleFullscreen() {
@@ -185,17 +186,15 @@ function updateStageHeight() {
   const stage = document.getElementById('stage');
   const buildingItems = stage.querySelectorAll('.building-item');
 
-  let maxBHeight = 0;
+  let maxBuildingMeters = 0;
   buildingItems.forEach(item => {
-    const img = item.querySelector('img');
-    if (img) {
-      const scale = parseFloat(img.dataset.scale || 1);
-      const effHeight = img.offsetHeight * scale;
-      if (effHeight > maxBHeight) {
-        maxBHeight = effHeight;
-      }
+    const heightM = parseFloat(item.dataset.height) || 0;
+    if (heightM > maxBuildingMeters) {
+      maxBuildingMeters = heightM;
     }
   });
+
+  const maxBHeight = maxBuildingMeters * PIXELS_PER_METER;
 
   const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
   const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
@@ -203,14 +202,12 @@ function updateStageHeight() {
   const hasLabels = showNames || showHeight || showYears;
 
   const wrapperH = wrapper.clientHeight || 500;
+  
+  // Standardowy, optymalny bufor na dymki bez przesadnego rozdmuchiwania płótna
+  const topBuffer = hasLabels ? 120 : 40;
+  const neededH = maxBHeight > 0 ? (maxBHeight + topBuffer) : wrapperH;
 
-  const topPaddingScreen = hasLabels ? 270 : 80;
-  const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
-  const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
-
-  const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
-
-  stage.style.height = neededH + 'px';
+  stage.style.height = `${Math.max(neededH, wrapperH)}px`;
   renderHeightGrid();
 }
 
@@ -588,6 +585,7 @@ function addToStage(building) {
   const item = document.createElement('div');
   item.className = 'building-item';
   item.dataset.name = building.name;
+  item.dataset.height = building.height_m || 0;
 
   let heightStr = '';
   if (building.height_m && building.height_m !== 'N/A') {
