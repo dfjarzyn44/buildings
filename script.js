@@ -438,16 +438,8 @@ function initInteractions() {
     }
   });
 
-  // Ignorujemy zmiany wysokości wywołane chowaniem pasków mobilnych przy dnie strony
-  let lastWidth = window.innerWidth;
-  window.addEventListener('resize', () => {
-    const currentWidth = window.innerWidth;
-    if (currentWidth === lastWidth) return; // To tylko schowanie/wysunięcie pionowego paska telefonu – ignorujemy!
-    lastWidth = currentWidth;
-
-    fitToStage();
-    renderHeightGrid();
-  });
+  // CAŁKOWICIE USUNIĘTO nasłuchiwanie window.resize, 
+  // żeby paski mobilne przy dnie strony nigdy więcej nie psuły płótna!
 }
 
 function renderHeightGrid() {
@@ -567,9 +559,15 @@ function fitToStage() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  let newZoom = Math.min(scaleX, scaleY);
-  if (hasLabels) {
-    newZoom = Math.min(newZoom, 1);
+  // Jeśli dymki są wyłączone, dopasowujemy się bezpośrednio do szerokości (scaleX),
+  // dzięki czemu budynki powiększają się i idealnie wypełniają prawą stronę bez marnowania miejsca.
+  // Jeśli dymki są włączone, bierzemy mniejszą wartość (scaleX, scaleY), ograniczając zoom do 1, 
+  // żeby etykiety miały bezpieczną przestrzeń.
+  let newZoom;
+  if (!hasLabels) {
+    newZoom = scaleX;
+  } else {
+    newZoom = Math.min(scaleX, scaleY, 1);
   }
 
   if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
