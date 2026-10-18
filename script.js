@@ -1,11 +1,13 @@
 const PIXELS_PER_METER = 10;
 const MIN_SCREEN_PADDING = 55;
+const BUILDING_SPACING_PX = 200; // 20 metrów w skali 10px/m
+const RIGHT_BUFFER_PX = 100;
 
 let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
 let isFullscreen = false;
 let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
 let ticking = false;
-let addedBuildings = new Set(); 
+let addedBuildings = []; // Tablica zachowująca kolejność dodawania obiektów
 
 const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
@@ -15,6 +17,10 @@ injectedStyles.innerHTML = `
   #stage {
     box-sizing: border-box;
     transform-origin: 0 0 !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block !important; /* Wyłączamy flexbox, przechodzimy na pozycjonowanie absolutne X */
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -34,8 +40,22 @@ injectedStyles.innerHTML = `
     z-index: 10; 
     pointer-events: none; 
   }
+  .building-item {
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+  }
   .building-ui {
-    transition: transform 0.1s ease-out;
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform-origin: top center;
+    z-index: 20;
+    pointer-events: none;
   }
   .grid-label {
     position: absolute;
@@ -65,19 +85,13 @@ injectedStyles.innerHTML = `
 `;
 document.head.appendChild(injectedStyles);
 
-function updateDynamicPadding() {
-  const stage = document.getElementById('stage');
-  if (!stage) return;
-
+function getLeftPadding() {
   const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
   const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
-
   const minLeftPadScreen = hasLabels ? 80 : 55;
-
-  stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
-  stage.style.paddingRight = '100px';
+  return Math.round(minLeftPadScreen / currentZoom);
 }
 
 async function loadData() {
@@ -103,7 +117,12 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-function updateBuildingUI() {
+// Główna funkcja układająca budynki i szerokość płótna na podstawie współrzędnych X
+function layoutStage() {
+  const stage = document.getElementById('stage');
+  if (!stage) return;
+
+  const leftPad = getLeftPadding();
   const inverseScale = 1 / currentZoom;
 
   const gridLabels = document.querySelectorAll('.grid-label');
@@ -111,34 +130,41 @@ function updateBuildingUI() {
     label.style.transform = `scale(${inverseScale})`;
   });
 
-  const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
-  if (buildingItems.length === 0) return;
+  const buildingItems = Array.from(stage.querySelectorAll('.building-item'));
+  if (buildingItems.length === 0) {
+    stage.style.width = `${leftPad + RIGHT_BUFFER_PX}px`;
+    return;
+  }
 
   let maxBuildingMeters = 0;
   buildingItems.forEach(item => {
     const heightM = parseFloat(item.dataset.height) || 0;
-    if (heightM > maxBuildingMeters) {
-      maxBuildingMeters = heightM;
-    }
+    if (heightM > maxBuildingMeters) maxBuildingMeters = heightM;
   });
   const maxBuildingHeight = maxBuildingMeters * PIXELS_PER_METER;
-
   const isZoomedIn = currentZoom > 1.2;
 
+  let currentX = leftPad;
+
   buildingItems.forEach((item, index) => {
-    const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
-    if (!ui || !img) return;
+    const ui = item.querySelector('.building-ui');
+    if (!img || !ui) return;
 
-    const isLast = (index === buildingItems.length - 1);
-    item.style.marginRight = isLast ? '0px' : '200px';
+    // Pobieramy naturalną lub przeskalowaną szerokość obrazka w DOM
+    const imgBoundingW = img.offsetWidth || img.naturalWidth || 100;
+    const scaleMultiplier = parseFloat(img.dataset.scale) || 1;
+    const actualWidth = imgBoundingW * scaleMultiplier;
 
+    // Ustawiamy absolutną pozycję X budynku na płótnie
+    item.style.left = `${currentX}px`;
+
+    // Przeliczanie pozycji Y dymka (uwzględniając kaskadę rzędów przy oddaleniu)
     const heightM = parseFloat(item.dataset.height) || 0;
     const currentHeight = heightM * PIXELS_PER_METER;
     const heightDiff = maxBuildingHeight - currentHeight;
 
     let rowOffsetScreen = 30;
-
     if (!isZoomedIn && buildingItems.length > 1) {
       const rowChoice = index % 3;
       if (rowChoice === 0) rowOffsetScreen = 30;
@@ -148,15 +174,26 @@ function updateBuildingUI() {
 
     const rowOffsetStage = rowOffsetScreen * inverseScale;
     const totalShiftPx = heightDiff + rowOffsetStage;
-
     const localY = -totalShiftPx * currentZoom;
     ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
+
+    // Przesuwamy kursor X dla kolejnego budynku (szerokość obecnego + stały odstęp 200px)
+    currentX += actualWidth + BUILDING_SPACING_PX;
   });
 
+  // Ostatni budynek nie potrzebuje odstępu, dodajemy tylko prawy bufor 100px
+  if (buildingItems.length > 0) {
+    const lastItem = buildingItems[buildingItems.length - 1];
+    const lastImg = lastItem.querySelector('img');
+    const lastW = (lastImg ? lastImg.offsetWidth : 100) * (parseFloat(lastImg?.dataset.scale) || 1);
+    currentX = parseFloat(lastItem.style.left) + lastW + RIGHT_BUFFER_PX;
+  }
+
+  stage.style.width = `${Math.max(currentX, leftPad + RIGHT_BUFFER_PX)}px`;
+
   const gridOverlay = document.getElementById('gridOverlay');
-  const stage = document.getElementById('stage');
-  if (gridOverlay && stage) {
-    gridOverlay.style.width = `${stage.scrollWidth}px`;
+  if (gridOverlay) {
+    gridOverlay.style.width = `${stage.style.width}`;
   }
 }
 
@@ -189,20 +226,16 @@ function updateStageHeight() {
   let maxBuildingMeters = 0;
   buildingItems.forEach(item => {
     const heightM = parseFloat(item.dataset.height) || 0;
-    if (heightM > maxBuildingMeters) {
-      maxBuildingMeters = heightM;
-    }
+    if (heightM > maxBuildingMeters) maxBuildingMeters = heightM;
   });
 
   const maxBHeight = maxBuildingMeters * PIXELS_PER_METER;
-
   const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
   const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
   const wrapperH = wrapper.clientHeight || 500;
-  
   const topBuffer = hasLabels ? 120 : 40;
   const neededH = maxBHeight > 0 ? (maxBHeight + topBuffer) : wrapperH;
 
@@ -234,12 +267,10 @@ function clampPan() {
 function applyTransform() {
   if (!ticking) {
     requestAnimationFrame(() => {
-      updateDynamicPadding();
       updateDimensionsCache();
       clampPan();
 
       const displayZoom = Math.round(currentZoom * 100);
-
       const zoomValElem = document.getElementById('zoomVal');
       if (zoomValElem) {
         zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
@@ -248,7 +279,7 @@ function applyTransform() {
       document.getElementById('stage').style.transform =
         `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
-      updateBuildingUI();
+      layoutStage();
 
       ticking = false;
     });
@@ -260,29 +291,17 @@ function applyTransform() {
 function initInteractions() {
   const stage = document.getElementById('stage');
 
-  const showNamesCheckbox = document.getElementById('showNamesCheckbox');
-  if (showNamesCheckbox) {
-    showNamesCheckbox.addEventListener('change', (e) => {
-      stage.classList.toggle('hide-names', !e.target.checked);
-      fitToStage();
-    });
-  }
-
-  const showHeightCheckbox = document.getElementById('showHeightCheckbox');
-  if (showHeightCheckbox) {
-    showHeightCheckbox.addEventListener('change', (e) => {
-      stage.classList.toggle('hide-height', !e.target.checked);
-      fitToStage();
-    });
-  }
-
-  const showYearsCheckbox = document.getElementById('showYearsCheckbox');
-  if (showYearsCheckbox) {
-    showYearsCheckbox.addEventListener('change', (e) => {
-      stage.classList.toggle('hide-years', !e.target.checked);
-      fitToStage();
-    });
-  }
+  ['showNamesCheckbox', 'showHeightCheckbox', 'showYearsCheckbox'].forEach(id => {
+    const cb = document.getElementById(id);
+    if (cb) {
+      cb.addEventListener('change', (e) => {
+        if (id === 'showNames') stage.classList.toggle('hide-names', !e.target.checked);
+        if (id === 'showHeight') stage.classList.toggle('hide-height', !e.target.checked);
+        if (id === 'showYears') stage.classList.toggle('hide-years', !e.target.checked);
+        fitToStage();
+      });
+    }
+  });
 
   const showGridCheckbox = document.getElementById('showGridCheckbox');
   if (showGridCheckbox) {
@@ -329,9 +348,7 @@ function initInteractions() {
     startY = e.clientY - panY;
   });
 
-  window.addEventListener('mouseup', () => {
-    isDown = false;
-  });
+  window.addEventListener('mouseup', () => { isDown = false; });
 
   wrapper.addEventListener('mousemove', (e) => {
     if (!isDown || !isFullscreen) return;
@@ -342,12 +359,7 @@ function initInteractions() {
 
   wrapper.addEventListener('touchstart', (e) => {
     if (!isFullscreen) return;
-
-    if (e.touches.length >= 3) {
-      isDown = false;
-      touchStartDist = 0;
-      return;
-    }
+    if (e.touches.length >= 3) { isDown = false; touchStartDist = 0; return; }
 
     if (e.touches.length === 1) {
       isDown = true;
@@ -355,10 +367,7 @@ function initInteractions() {
       startY = e.touches[0].clientY - panY;
     } else if (e.touches.length === 2) {
       isDown = false;
-      touchStartDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      touchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       const rect = wrapper.getBoundingClientRect();
       touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
@@ -370,19 +379,11 @@ function initInteractions() {
 
   wrapper.addEventListener('touchmove', (e) => {
     if (!isFullscreen) return;
-
-    if (e.touches.length >= 3) {
-      isDown = false;
-      touchStartDist = 0;
-      return;
-    }
+    if (e.touches.length >= 3) { isDown = false; touchStartDist = 0; return; }
 
     if (e.touches.length === 2) {
       if (e.cancelable) e.preventDefault();
-      const currentDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const currentDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       if (currentDist === 0 || touchStartDist === 0) return;
 
       const rect = wrapper.getBoundingClientRect();
@@ -406,15 +407,8 @@ function initInteractions() {
   }, { passive: false });
 
   wrapper.addEventListener('touchend', (e) => {
-    if (e.touches.length >= 3) {
-      isDown = false;
-      touchStartDist = 0;
-      return;
-    }
-
-    if (e.touches.length < 2) {
-      touchStartDist = 0;
-    }
+    if (e.touches.length >= 3) { isDown = false; touchStartDist = 0; return; }
+    if (e.touches.length < 2) touchStartDist = 0;
     if (e.touches.length === 1) {
       isDown = true;
       startX = e.touches[0].clientX - panX;
@@ -436,47 +430,32 @@ function renderHeightGrid() {
   if (!gridOverlay || !showGridCheckbox) return;
 
   gridOverlay.innerHTML = '';
-
   if (!showGridCheckbox.checked) {
     gridOverlay.style.display = 'none';
     return;
   }
-
   gridOverlay.style.display = 'block';
 
   const unit = document.querySelector('input[name="gridUnit"]:checked')?.value || 'metric';
   const stage = document.getElementById('stage');
   const stageHeight = stage ? stage.clientHeight : 500;
-
   const maxMeters = stageHeight / PIXELS_PER_METER;
 
   if (unit === 'metric') {
-    const minorStep = 50; 
-    const majorStep = 100;
-
-    for (let m = minorStep; m <= maxMeters; m += minorStep) {
+    for (let m = 50; m <= maxMeters; m += 50) {
       const bottomPx = m * PIXELS_PER_METER;
       if (bottomPx > stageHeight) break;
-
-      const isMajor = (m % majorStep === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${m}m` : null, isMajor);
+      createGridLine(gridOverlay, bottomPx, (m % 100 === 0) ? `${m}m` : null, (m % 100 === 0));
     }
   } else {
-    const minorStepFt = 100;
-    const majorStepFt = 500;
-    const maxFeet = maxMeters / 0.3048;
-
-    for (let ft = minorStepFt; ft <= maxFeet; ft += minorStepFt) {
+    for (let ft = 100; ft <= (maxMeters / 0.3048); ft += 100) {
       const meters = ft * 0.3048;
       const bottomPx = meters * PIXELS_PER_METER;
       if (bottomPx > stageHeight) break;
-
-      const isMajor = (ft % majorStepFt === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
+      createGridLine(gridOverlay, bottomPx, (ft % 500 === 0) ? `${ft}ft` : null, (ft % 500 === 0));
     }
   }
-
-  updateBuildingUI();
+  layoutStage();
 }
 
 function createGridLine(container, bottomPx, labelText, isMajor) {
@@ -490,40 +469,28 @@ function createGridLine(container, bottomPx, labelText, isMajor) {
     label.textContent = labelText;
     line.appendChild(label);
   }
-
   container.appendChild(line);
 }
 
 function toggleGridControls() {
   const showGridCheckbox = document.getElementById('showGridCheckbox');
   const showGrid = showGridCheckbox ? showGridCheckbox.checked : false;
-  const unitRadios = document.querySelectorAll('input[name="gridUnit"]');
+  document.querySelectorAll('input[name="gridUnit"]').forEach(r => r.disabled = !showGrid);
   const unitSelector = document.getElementById('unitSelector');
-
-  unitRadios.forEach(radio => {
-    radio.disabled = !showGrid;
-  });
-
-  if (unitSelector) {
-    unitSelector.classList.toggle('disabled', !showGrid);
-  }
-
+  if (unitSelector) unitSelector.classList.toggle('disabled', !showGrid);
   renderHeightGrid();
 }
 
 function clearStage() {
   const stage = document.getElementById('stage');
-  if (stage) {
-    stage.innerHTML = '';
-  }
-  addedBuildings.clear();
+  if (stage) stage.innerHTML = '';
+  addedBuildings = [];
   filterData();
   fitToStage();
 }
 
 function fitToStage() {
   updateStageHeight();
-  updateDynamicPadding();
   updateDimensionsCache();
 
   const stage = document.getElementById('stage');
@@ -540,97 +507,68 @@ function fitToStage() {
   const scaleX = stageDim.wrapperW / stageDim.stageW;
   const scaleY = stageDim.wrapperH / stageDim.stageH;
   let newZoom = Math.min(scaleX, scaleY, 1);
-
-  if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
-    newZoom = 1;
-  }
+  if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) newZoom = 1;
 
   currentZoom = newZoom;
-
-  updateDynamicPadding();
   updateDimensionsCache();
 
   panX = 0;
   panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
-
-  if (isNaN(panY)) {
-    panY = 0;
-  }
+  if (isNaN(panY)) panY = 0;
 
   applyTransform();
 }
 
 function removeBuilding(name) {
-  addedBuildings.delete(name);
+  addedBuildings = addedBuildings.filter(b => b.name !== name);
   const stage = document.getElementById('stage');
-  const items = stage.querySelectorAll('.building-item');
-  
-  items.forEach(item => {
-    if (item.dataset.name === name) {
-      item.remove();
-    }
+  stage.querySelectorAll('.building-item').forEach(item => {
+    if (item.dataset.name === name) item.remove();
   });
-
-  filterData(); 
+  filterData();
   fitToStage();
 }
 
 function addToStage(building) {
-  if (addedBuildings.has(building.name)) return;
-  addedBuildings.add(building.name);
+  if (addedBuildings.some(b => b.name === building.name)) return;
+  addedBuildings.push(building);
 
   const stage = document.getElementById('stage');
-  const existingItems = stage.querySelectorAll('.building-item');
-
-  // Natychmiastowe ustawienie marginesu 200px dla poprzedniego ostatniego elementu,
-  // żeby uniknąć efektu "przyklejenia do prawej" przed pełnym przeliczeniem.
-  if (existingItems.length > 0) {
-    existingItems[existingItems.length - 1].style.marginRight = '200px';
-  }
 
   const item = document.createElement('div');
   item.className = 'building-item';
-  item.style.marginRight = '0px'; // Nowy element jest ostatni, więc 0px na start
   item.dataset.name = building.name;
   item.dataset.height = building.height_m || 0;
 
   let heightStr = '';
   if (building.height_m && building.height_m !== 'N/A') {
     heightStr = `${building.height_m} m`;
-    if (building.height_ft && building.height_ft !== 'N/A') {
-      heightStr += ` / ${building.height_ft} ft`;
-    }
+    if (building.height_ft && building.height_ft !== 'N/A') heightStr += ` / ${building.height_ft} ft`;
   } else if (building.height_ft && building.height_ft !== 'N/A') {
     heightStr = `${building.height_ft} ft`;
   }
 
   let builtStr = '';
   const year = building.year_built || building.built;
-  if (year && year !== 'N/A') {
-    builtStr = `${year}`;
-  }
+  if (year && year !== 'N/A') builtStr = `${year}`;
 
   let uiContent = `<div class="building-name">${building.name}</div>`;
-  if (heightStr) {
-    uiContent += `<div class="building-height">${heightStr}</div>`;
-  }
-  if (builtStr) {
-    uiContent += `<div class="building-years">${builtStr}</div>`;
-  }
+  if (heightStr) uiContent += `<div class="building-height">${heightStr}</div>`;
+  if (builtStr) uiContent += `<div class="building-years">${builtStr}</div>`;
 
   const scaleMultiplier = (building.scale_multiplier !== undefined && building.scale_multiplier !== null) ? Number(building.scale_multiplier) : 1;
 
   item.innerHTML = `
     <div class="building-ui">
-      <div class="building-info">
-        ${uiContent}
-      </div>
+      <div class="building-info">${uiContent}</div>
     </div>
     <img src="${building.image_2d}" alt="${building.name}" style="transform: scale(${scaleMultiplier}); transform-origin: bottom center;" data-scale="${scaleMultiplier}">
   `;
 
   stage.appendChild(item);
-  filterData(); 
+  filterData();
+  
+  // Wzrokowo układamy od razu na czysto bez czekania
   fitToStage();
 }
 
@@ -640,7 +578,7 @@ function renderGrid(data) {
   grid.innerHTML = '';
 
   data.forEach(b => {
-    const isAdded = addedBuildings.has(b.name);
+    const isAdded = addedBuildings.some(item => item.name === b.name);
     const card = document.createElement('div');
     card.className = `card ${isAdded ? 'added' : ''}`;
 
@@ -656,22 +594,16 @@ function renderGrid(data) {
     `;
 
     card.onclick = () => {
-      if (isAdded) {
-        removeBuilding(b.name);
-      } else {
-        addToStage(b);
-      }
+      if (isAdded) removeBuilding(b.name);
+      else addToStage(b);
     };
-
     grid.appendChild(card);
   });
 }
 
 function setupFilters() {
   const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', filterData);
-  }
+  if (searchInput) searchInput.addEventListener('input', filterData);
 }
 
 function filterData() {
@@ -682,14 +614,8 @@ function filterData() {
     const name = (b.name || '').toLowerCase();
     const city = (b.city || '').toLowerCase();
     const country = (b.country || '').toLowerCase();
-    
-    return (
-      name.includes(search) ||
-      city.includes(search) ||
-      country.includes(search)
-    );
+    return name.includes(search) || city.includes(search) || country.includes(search);
   });
-
   renderGrid(filtered);
 }
 
