@@ -438,9 +438,14 @@ function initInteractions() {
     }
   });
 
+  // Zabezpieczenie przed lawiną zdarzeń resize przy uderzaniu o dno strony na telefonie
+  let resizeTimeout;
   window.addEventListener('resize', () => {
-    fitToStage();
-    renderHeightGrid();
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      fitToStage();
+      renderHeightGrid();
+    }, 250);
   });
 }
 
