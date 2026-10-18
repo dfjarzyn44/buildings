@@ -75,11 +75,10 @@ function updateDynamicPadding() {
   const hasLabels = showNames || showHeight || showYears;
 
   const minLeftPadScreen = hasLabels ? 80 : 55;
+  const minRightPadScreen = hasLabels ? 90 : 60;
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
-  
-  // Sztywny prawy bufor płótna: 100px
-  stage.style.paddingRight = '100px';
+  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
 }
 
 async function loadData() {
@@ -135,13 +134,13 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
-    // Sztywny odstęp 200px między budynkami (poza ostatnim)
-    const isLast = (index === buildingItems.length - 1);
-    item.style.marginRight = isLast ? '0px' : '200px';
-
     const scale = parseFloat(img.dataset.scale || 1);
     const currentHeight = img.offsetHeight * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
+
+    // Dynamiczny margines oparty na efektywnej wysokości budynku (np. 15% jego wysokości)
+    const dynamicMargin = Math.round(currentHeight * 0.15);
+    item.style.marginRight = `${dynamicMargin}px`;
 
     let rowOffsetScreen = 30;
 
@@ -158,13 +157,6 @@ function updateBuildingUI() {
     const localY = -totalShiftPx * currentZoom;
     ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
-
-  // Synchronizacja szerokości siatki z faktyczną szerokością stage'a
-  const gridOverlay = document.getElementById('gridOverlay');
-  const stage = document.getElementById('stage');
-  if (gridOverlay && stage) {
-    gridOverlay.style.width = `${stage.scrollWidth}px`;
-  }
 }
 
 function toggleFullscreen() {
@@ -212,13 +204,13 @@ function updateStageHeight() {
 
   const wrapperH = wrapper.clientHeight || 500;
 
-  // Przestrzeń nad najwyższym budynkiem na dymki (gdy włączone)
-  const topBuffer = hasLabels ? 400 : 100;
-  
-  // Faktyczna wysokość uwzględniająca giganty (>850m) i dymki bez sztucznych ograniczeń
-  const neededH = maxBHeight > 0 ? (maxBHeight + topBuffer) : wrapperH;
+  const topPaddingScreen = hasLabels ? 270 : 80;
+  const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
+  const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
 
-  stage.style.height = `${Math.max(neededH, wrapperH)}px`;
+  const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
+
+  stage.style.height = neededH + 'px';
   renderHeightGrid();
 }
 
@@ -503,4 +495,202 @@ function createGridLine(container, bottomPx, labelText, isMajor) {
     line.appendChild(label);
   }
 
-  container.
+  container.appendChild(line);
+}
+
+function toggleGridControls() {
+  const showGridCheckbox = document.getElementById('showGridCheckbox');
+  const showGrid = showGridCheckbox ? showGridCheckbox.checked : false;
+  const unitRadios = document.querySelectorAll('input[name="gridUnit"]');
+  const unitSelector = document.getElementById('unitSelector');
+
+  unitRadios.forEach(radio => {
+    radio.disabled = !showGrid;
+  });
+
+  if (unitSelector) {
+    unitSelector.classList.toggle('disabled', !showGrid);
+  }
+
+  renderHeightGrid();
+}
+
+function clearStage() {
+  const stage = document.getElementById('stage');
+  if (stage) {
+    stage.innerHTML = '';
+  }
+  addedBuildings.clear();
+  filterData();
+  fitToStage();
+}
+
+function fitToStage() {
+  updateStageHeight();
+  updateDynamicPadding();
+  updateDimensionsCache();
+
+  const stage = document.getElementById('stage');
+  const buildingItems = stage.querySelectorAll('.building-item');
+
+  if (buildingItems.length === 0) {
+    currentZoom = 1;
+    panX = 0;
+    panY = 0;
+    applyTransform();
+    return;
+  }
+
+  const scaleX = stageDim.wrapperW / stageDim.stageW;
+  const scaleY = stageDim.wrapperH / stageDim.stageH;
+  let newZoom = Math.min(scaleX, scaleY, 1);
+
+  if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
+    newZoom = 1;
+  }
+
+  currentZoom = newZoom;
+
+  updateDynamicPadding();
+  updateDimensionsCache();
+
+  panX = 0;
+  panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
+
+  if (isNaN(panY)) {
+    panY = 0;
+  }
+
+  applyTransform();
+}
+
+function removeBuilding(name) {
+  addedBuildings.delete(name);
+  const stage = document.getElementById('stage');
+  const items = stage.querySelectorAll('.building-item');
+  
+  items.forEach(item => {
+    if (item.dataset.name === name) {
+      item.remove();
+    }
+  });
+
+  filterData(); 
+  fitToStage();
+}
+
+function addToStage(building) {
+  if (addedBuildings.has(building.name)) return;
+  addedBuildings.add(building.name);
+
+  const stage = document.getElementById('stage');
+
+  const item = document.createElement('div');
+  item.className = 'building-item';
+  item.dataset.name = building.name;
+
+  let heightStr = '';
+  if (building.height_m && building.height_m !== 'N/A') {
+    heightStr = `${building.height_m} m`;
+    if (building.height_ft && building.height_ft !== 'N/A') {
+      heightStr += ` / ${building.height_ft} ft`;
+    }
+  } else if (building.height_ft && building.height_ft !== 'N/A') {
+    heightStr = `${building.height_ft} ft`;
+  }
+
+  let builtStr = '';
+  const year = building.year_built || building.built;
+  if (year && year !== 'N/A') {
+    builtStr = `${year}`;
+  }
+
+  let uiContent = `<div class="building-name">${building.name}</div>`;
+  if (heightStr) {
+    uiContent += `<div class="building-height">${heightStr}</div>`;
+  }
+  if (builtStr) {
+    uiContent += `<div class="building-years">${builtStr}</div>`;
+  }
+
+  const scaleMultiplier = (building.scale_multiplier !== undefined && building.scale_multiplier !== null) ? Number(building.scale_multiplier) : 1;
+
+  item.innerHTML = `
+    <div class="building-ui">
+      <div class="building-info">
+        ${uiContent}
+      </div>
+    </div>
+    <img src="${building.image_2d}" alt="${building.name}" style="transform: scale(${scaleMultiplier}); transform-origin: bottom center;" data-scale="${scaleMultiplier}">
+  `;
+
+  const img = item.querySelector('img');
+  img.onload = () => {
+    fitToStage();
+  };
+
+  stage.appendChild(item);
+  filterData(); 
+  fitToStage();
+}
+
+function renderGrid(data) {
+  const grid = document.getElementById('buildingsGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  data.forEach(b => {
+    const isAdded = addedBuildings.has(b.name);
+    const card = document.createElement('div');
+    card.className = `card ${isAdded ? 'added' : ''}`;
+
+    const city = b.city || '';
+    const country = b.country || '';
+    const locationText = [city, country].filter(Boolean).join(', ');
+
+    card.innerHTML = `
+      ${isAdded ? `<div class="card-remove-indicator">&times;</div>` : ''}
+      <img src="${b.thumbnail}" alt="${b.name}">
+      <h3>${b.name}</h3>
+      ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
+    `;
+
+    card.onclick = () => {
+      if (isAdded) {
+        removeBuilding(b.name);
+      } else {
+        addToStage(b);
+      }
+    };
+
+    grid.appendChild(card);
+  });
+}
+
+function setupFilters() {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', filterData);
+  }
+}
+
+function filterData() {
+  const searchInput = document.getElementById('searchInput');
+  const search = searchInput ? searchInput.value.toLowerCase() : '';
+  
+  const filtered = buildingsData.filter(b => {
+    const name = (b.name || '').toLowerCase();
+    const city = (b.city || '').toLowerCase();
+    const country = (b.country || '').toLowerCase();
+    
+    return (
+      name.includes(search) ||
+      city.includes(search) ||
+      country.includes(search)
+    );
+  });
+
+  renderGrid(filtered);
+}
+
+loadData();
