@@ -183,6 +183,13 @@ function updateStageHeight() {
   const stage = document.getElementById('stage');
   const buildingItems = stage.querySelectorAll('.building-item');
 
+  // Jeśli nie ma budynków, zdejmujemy sztywne ograniczenie wysokości (tak jak przy starcie strony)
+  if (buildingItems.length === 0) {
+    stage.style.height = '';
+    renderHeightGrid();
+    return;
+  }
+
   let maxBHeight = 0;
   buildingItems.forEach(item => {
     const img = item.querySelector('img');
@@ -524,11 +531,6 @@ function clearStage() {
   addedBuildings.clear();
   filterData();
   fitToStage();
-  
-  // Zapewnienie stabilności siatki po wyczyszczeniu płótna
-  setTimeout(() => {
-    renderHeightGrid();
-  }, 50);
 }
 
 function fitToStage() {
