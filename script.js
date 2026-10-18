@@ -11,10 +11,13 @@ const injectedStyles = document.createElement('style');
 injectedStyles.innerHTML = `
   #stageWrapper {
     touch-action: pan-x pan-y !important;
+    overflow: hidden !important;
+    will-change: transform;
   }
   #stage {
     box-sizing: border-box;
     transform-origin: 0 0 !important;
+    will-change: transform;
   }
   .stage-wrapper.fullscreen #toggleFsBtn {
     position: fixed !important;
@@ -437,9 +440,6 @@ function initInteractions() {
       isDown = false;
     }
   });
-
-  // CAŁKOWICIE USUNIĘTO nasłuchiwanie window.resize, 
-  // żeby paski mobilne przy dnie strony nigdy więcej nie psuły płótna!
 }
 
 function renderHeightGrid() {
@@ -559,13 +559,9 @@ function fitToStage() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  // Jeśli dymki są wyłączone, dopasowujemy się bezpośrednio do szerokości (scaleX),
-  // dzięki czemu budynki powiększają się i idealnie wypełniają prawą stronę bez marnowania miejsca.
-  // Jeśli dymki są włączone, bierzemy mniejszą wartość (scaleX, scaleY), ograniczając zoom do 1, 
-  // żeby etykiety miały bezpieczną przestrzeń.
   let newZoom;
   if (!hasLabels) {
-    newZoom = scaleX;
+    newZoom = scaleY;
   } else {
     newZoom = Math.min(scaleX, scaleY, 1);
   }
