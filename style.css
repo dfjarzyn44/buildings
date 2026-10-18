@@ -22,7 +22,8 @@ h1 {
   justify-content: center;
 }
 
-input, select {
+input,
+select {
   padding: 10px;
   font-size: 16px;
   border: 1px solid #ccc;
@@ -53,7 +54,6 @@ input, select {
   padding: 10px;
   text-align: center;
   cursor: pointer;
-  position: relative;
 }
 
 .card:hover {
@@ -62,17 +62,6 @@ input, select {
 
 .card.added {
   border: 3px solid #28a745;
-}
-
-.card-remove-indicator {
-  position: absolute;
-  top: 5px;
-  right: 8px;
-  color: #dc3545;
-  font-size: 22px;
-  font-weight: bold;
-  z-index: 10;
-  pointer-events: none;
 }
 
 .card img {
@@ -89,19 +78,18 @@ input, select {
   font-size: 13px;
 }
 
-.card-location {
-  margin: 4px 0 0 0;
-  font-size: 11px;
-  color: #666;
-}
+/* STAGE & CONTROLS */
 
-.stage-header {
+.stage-section {
+  margin-top: 25px;
   margin-bottom: 15px;
 }
 
-.stage-header h2 {
-  font-size: 22px;
-  margin: 0 0 10px 0;
+.stage-section h2 {
+  font-size: 26px;
+  font-weight: bold;
+  margin: 0 0 15px 0;
+  color: #222;
 }
 
 .stage-controls {
@@ -168,6 +156,8 @@ input, select {
   background: #e2e2e2;
 }
 
+/* STAGE WRAPPER */
+
 .stage-wrapper {
   width: 100%;
   height: 450px;
@@ -179,6 +169,8 @@ input, select {
   user-select: none;
   touch-action: pan-y;
 }
+
+/* FULLSCREEN MODE */
 
 .stage-wrapper.fullscreen {
   position: fixed;
@@ -218,12 +210,14 @@ input, select {
   display: block;
 }
 
+/* STAGE CANVAS & GROUND */
+
 #stage {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 120px;
-  padding: 160px 30px 0 80px;
+  gap: 120px;                     /* Zwiększona przerwa między budynkami */
+  padding: 160px 30px 0 80px;      /* 80px z lewej daje miejsce na liczby siatki */
   box-sizing: border-box;
   min-width: 100%;
   width: max-content;
@@ -234,6 +228,8 @@ input, select {
   left: 0;
   border-bottom: 12px solid #57ab59;
 }
+
+/* BUILDING ITEM */
 
 .building-item {
   display: flex;
@@ -254,6 +250,8 @@ input, select {
   padding: 0;
 }
 
+/* BUILDING UI & LABELS */
+
 .building-ui {
   position: absolute;
   top: 0;
@@ -269,11 +267,10 @@ input, select {
   left: 50%;
   transform: translateX(-50%);
   margin-bottom: 6px;
-  font-size: 11px;
-  line-height: 1.2;
+  font-size: 12px;
   text-align: center;
   background: rgba(255, 255, 255, 0.95);
-  padding: 4px 6px;
+  padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   white-space: nowrap;
@@ -286,16 +283,64 @@ input, select {
 
 .building-height,
 .building-years {
-  white-space: nowrap;
-  font-size: 10px;
+  font-size: 11px;
   color: #444;
 }
 
-/* Ukrywanie poszczególnych etykiet */
-#stage.hide-names .building-name { display: none; }
-#stage.hide-height .building-height { display: none; }
-#stage.hide-years .building-years { display: none; }
-#stage.hide-names.hide-height.hide-years .building-info { display: none; }
+/* VISIBILITY TOGGLES */
+
+#stage.hide-names .building-name {
+  display: none;
+}
+
+#stage.hide-height .building-height {
+  display: none;
+}
+
+#stage.hide-years .building-years {
+  display: none;
+}
+
+#stage.hide-names.hide-height.hide-years .building-info {
+  display: none;
+}
+
+/* CARD LOCATION */
+
+.card-location {
+  margin: 4px 0 0 0;
+  font-size: 11px;
+  color: #666;
+}
+
+/* MOBILE LAYOUT */
+
+@media (max-width: 480px) {
+  body {
+    margin: 10px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: none;
+    grid-template-rows: repeat(2, 1fr);
+    grid-auto-flow: column;
+    height: auto;
+    max-height: 420px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 10px;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .card {
+    width: 150px;
+    box-sizing: border-box;
+  }
+}
+
+/* GRID OVERLAY */
 
 #gridOverlay {
   position: absolute;
@@ -320,31 +365,13 @@ input, select {
 
 .grid-label {
   position: absolute;
-  left: 4px;
-  transform-origin: left center;
-  white-space: nowrap;
-  font-size: 11px;
+  left: 10px;
+  bottom: 4px;
+  font-size: 14px;
   color: #333;
   background: rgba(255, 255, 255, 0.85);
-  padding: 1px 4px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   font-weight: bold;
-}
-
-@media (max-width: 480px) {
-  body { margin: 10px; }
-  .grid {
-    display: grid;
-    grid-template-columns: none;
-    grid-template-rows: repeat(2, 1fr);
-    grid-auto-flow: column;
-    height: auto;
-    max-height: 420px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 10px;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-  .card { width: 150px; box-sizing: border-box; }
+  transform-origin: left bottom;
 }
