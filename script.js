@@ -438,14 +438,15 @@ function initInteractions() {
     }
   });
 
-  // Zabezpieczenie przed lawiną zdarzeń resize przy uderzaniu o dno strony na telefonie
-  let resizeTimeout;
+  // Ignorujemy zmiany wysokości wywołane chowaniem pasków mobilnych przy dnie strony
+  let lastWidth = window.innerWidth;
   window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      fitToStage();
-      renderHeightGrid();
-    }, 250);
+    const currentWidth = window.innerWidth;
+    if (currentWidth === lastWidth) return; // To tylko schowanie/wysunięcie pionowego paska telefonu – ignorujemy!
+    lastWidth = currentWidth;
+
+    fitToStage();
+    renderHeightGrid();
   });
 }
 
