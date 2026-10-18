@@ -218,8 +218,8 @@ function updateStageHeight() {
 
   const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
 
-  // Bezpieczny limit wysokości zapobiegający białym plamom (GPU limit)
-  const safeH = Math.min(neededH, 4000);
+  // Zwiększony bezpieczny limit do 8000px, żeby giganty >500m (jak CN Tower) nie miały uciętych czubków
+  const safeH = Math.min(neededH, 8000);
 
   stage.style.height = safeH + 'px';
   renderHeightGrid();
