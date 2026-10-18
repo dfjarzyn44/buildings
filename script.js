@@ -75,7 +75,8 @@ function updateDynamicPadding() {
   const hasLabels = showNames || showHeight || showYears;
 
   const minLeftPadScreen = hasLabels ? 80 : 55;
-  const minRightPadScreen = hasLabels ? 90 : 60;
+  // Stały, bezpieczny margines na prawym końcu (ok. 100px)
+  const minRightPadScreen = 100;
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
   stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
@@ -134,12 +135,13 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (!ui || !img) return;
 
+    // Sztywny odstęp 200px po prawej stronie każdego budynku (poza ostatnim)
+    const isLast = (index === buildingItems.length - 1);
+    item.style.marginRight = isLast ? '0px' : '200px';
+
     const scale = parseFloat(img.dataset.scale || 1);
     const currentHeight = img.offsetHeight * scale;
     const heightDiff = maxBuildingHeight - currentHeight;
-
-    // Usunięto sztywny marginRight na rzecz dynamicznego rozkładania flex-boxem (space-evenly)
-    item.style.marginRight = '0px';
 
     let rowOffsetScreen = 30;
 
@@ -156,6 +158,13 @@ function updateBuildingUI() {
     const localY = -totalShiftPx * currentZoom;
     ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
   });
+
+  // Upewniamy się, że siatka pokrywa pełną szerokość stage po dodaniu elementów
+  const gridOverlay = document.getElementById('gridOverlay');
+  const stage = document.getElementById('stage');
+  if (gridOverlay && stage) {
+    gridOverlay.style.width = `${stage.scrollWidth}px`;
+  }
 }
 
 function toggleFullscreen() {
@@ -209,7 +218,10 @@ function updateStageHeight() {
 
   const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
 
-  stage.style.height = neededH + 'px';
+  // Bezpieczne ograniczenie wysokości, żeby zapobiegać błędom renderowania warstw GPU (białe prostokąty)
+  const safeH = Math.min(neededH, 4000);
+
+  stage.style.height = safeH + 'px';
   renderHeightGrid();
 }
 
@@ -645,7 +657,7 @@ function renderGrid(data) {
 
     const city = b.city || '';
     const country = b.country || '';
-    locationText = [city, country].filter(Boolean).join(', ');
+    const locationText = [city, country].filter(Boolean).join(', ');
 
     card.innerHTML = `
       ${isAdded ? `<div class="card-remove-indicator">&times;</div>` : ''}
