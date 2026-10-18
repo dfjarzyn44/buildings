@@ -215,11 +215,11 @@ select {
 #stage {
   display: flex;
   align-items: flex-end;
-  justify-content: flex-start; /* Zmienione z space-evenly, żeby marginesy działały poprawnie */
+  justify-content: flex-start;
   padding: 160px 30px 0 80px;      
   box-sizing: border-box;
   min-width: 100%;
-  width: max-content; /* Pozwala stage rosnąć wszerz wraz z budynkami i odstępami */
+  width: max-content;
   background: #ffffff;
   transform-origin: 0 0;
   position: absolute;
