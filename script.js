@@ -528,11 +528,14 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
-    stage.innerHTML = '';
+    // Usuwamy tylko budynki, zostawiając gridOverlay w spokoju!
+    const items = stage.querySelectorAll('.building-item');
+    items.forEach(item => item.remove());
   }
   addedBuildings.clear();
   filterData();
   fitToStage();
+  renderHeightGrid();
 }
 
 function fitToStage() {
@@ -640,7 +643,6 @@ function addToStage(building) {
     fitToStage();
   };
 
-  // Obsługa zarówno nowych, jak i zacachowanych obrazków (które mają już img.complete)
   if (img.complete) {
     requestAnimationFrame(handleImageReady);
   } else {
