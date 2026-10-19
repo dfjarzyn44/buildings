@@ -75,7 +75,6 @@ function updateDynamicPadding() {
   const hasLabels = showNames || showHeight || showYears;
 
   const minLeftPadScreen = hasLabels ? 80 : 55;
-  // Zmniejszamy prawy margines do minimum (10px) gdy etykiety są wyłączone, żeby nie tworzyć pustej dziury
   const minRightPadScreen = hasLabels ? 90 : 10;
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
@@ -227,6 +226,11 @@ function clampPan() {
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
   if (scaledH <= wrapperH) {
     panY = wrapperH - scaledH;
   } else {
@@ -235,11 +239,15 @@ function clampPan() {
     panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
-  if (scaledW > wrapperW) {
-    const minPanX = wrapperW - scaledW;
-    panX = Math.min(0, Math.max(minPanX, panX));
-  } else {
+  if (!hasLabels) {
     panX = 0;
+  } else {
+    if (scaledW > wrapperW) {
+      const minPanX = wrapperW - scaledW;
+      panX = Math.min(0, Math.max(minPanX, panX));
+    } else {
+      panX = 0;
+    }
   }
 }
 
@@ -564,11 +572,10 @@ function fitToStage() {
 
   let newZoom;
   if (!hasLabels) {
-    // Gdy etykiety są wyłączone, dopasowujemy widok pod szerokość (scaleX),
-    // żeby budynki ładnie rozciągnęły się i wypełniły poziomą przestrzeń.
-    newZoom = scaleX;
+    // Bezpieczne dopasowanie: dążymy do wypełnienia szerokości (scaleX), 
+    // ale NIGDY nie przekraczamy wysokości (scaleY), żeby pojedynczy wysoki budynek nie został ucięty.
+    newZoom = Math.min(scaleX, scaleY);
   } else {
-    // Gdy etykiety są włączone, zostawiamy bezpieczne dopasowanie z obu stron
     newZoom = Math.min(scaleX, scaleY, 1);
   }
 
