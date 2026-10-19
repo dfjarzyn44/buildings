@@ -75,7 +75,8 @@ function updateDynamicPadding() {
   const hasLabels = showNames || showHeight || showYears;
 
   const minLeftPadScreen = hasLabels ? 80 : 55;
-  const minRightPadScreen = hasLabels ? 90 : 60;
+  // Zmniejszamy prawy margines do minimum (10px) gdy etykiety są wyłączone, żeby nie tworzyć pustej dziury
+  const minRightPadScreen = hasLabels ? 90 : 10;
 
   stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
   stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
@@ -528,7 +529,6 @@ function toggleGridControls() {
 function clearStage() {
   const stage = document.getElementById('stage');
   if (stage) {
-    // Usuwamy tylko budynki, zostawiając gridOverlay w spokoju!
     const items = stage.querySelectorAll('.building-item');
     items.forEach(item => item.remove());
   }
@@ -554,9 +554,23 @@ function fitToStage() {
     return;
   }
 
+  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
+  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
+  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
+  const hasLabels = showNames || showHeight || showYears;
+
   const scaleX = stageDim.wrapperW / stageDim.stageW;
   const scaleY = stageDim.wrapperH / stageDim.stageH;
-  let newZoom = Math.min(scaleX, scaleY, 1);
+
+  let newZoom;
+  if (!hasLabels) {
+    // Gdy etykiety są wyłączone, dopasowujemy widok pod szerokość (scaleX),
+    // żeby budynki ładnie rozciągnęły się i wypełniły poziomą przestrzeń.
+    newZoom = scaleX;
+  } else {
+    // Gdy etykiety są włączone, zostawiamy bezpieczne dopasowanie z obu stron
+    newZoom = Math.min(scaleX, scaleY, 1);
+  }
 
   if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
     newZoom = 1;
