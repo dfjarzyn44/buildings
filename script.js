@@ -572,8 +572,6 @@ function fitToStage() {
 
   let newZoom;
   if (!hasLabels) {
-    // Inteligentne "pompowanie" kadru (Smart Auto-Fit):
-    // 1. Sprawdzamy maksymalną wysokość budynków, żeby dopasować zoom pionowy (zostawiając ok. 55px zapasu u góry)
     let maxBHeight = 0;
     buildingItems.forEach(item => {
       const img = item.querySelector('img');
@@ -588,27 +586,20 @@ function fitToStage() {
     const targetH = wrapperH - 55;
     const zoomY = maxBHeight > 0 ? (targetH / maxBHeight) : 1;
 
-    // 2. Sprawdzamy zoom poziomy tak, aby szerokość contentu dociągnęła się do prawej ścianki (zostawiając 15px prawego marginesu)
-    // Pobieramy surową szerokość samych budynków bez lewego paddingu
     const leftPad = 55;
     const rightPad = 15;
     const availableW = wrapperW - leftPad - rightPad;
     
-    // Szacujemy szerokość bazową stage (stageDim.stageW minus aktualny lewy padding)
     const baseContentW = stageDim.stageW - (leftPad / (currentZoom || 1));
     const zoomX = baseContentW > 0 ? (availableW / baseContentW) : 1;
 
-    // Wybieramy WIĘKSZY z zoomów, żeby agresywniej dociągnąć do krawędzi, 
-    // ale nakładamy bezpieczną granicę Math.min, żeby żaden wymiar nie przekroczył okna (z zachowaniem zapasu).
-    // W praktyce: dążymy do maksymalnego wypełnienia kadru bez wychodzenia poza ścianki.
     newZoom = Math.max(zoomX, zoomY);
 
-    // Dodatkowe zabezpieczenie: upewniamy się, że przy tym zoomie budynek nie ucieknie w pionie ani w poziomie za mocno
     const maxAllowedZoomByHeight = targetH / maxBHeight;
     const maxAllowedZoomByWidth = availableW / baseContentW;
     
-    // Bierzemy mniejsze z tych maksimów, żeby absolutnie nie przekroczyć kadru
-    newZoom = Math.min(newZoom, maxAllowedZoomByHeight, maxAllowedZoomByWidth * 1.15);
+    // Usunięto czynnik 1.15 – teraz zoom jest bezpiecznie przycięty do szerokości okna
+    newZoom = Math.min(newZoom, maxAllowedZoomByHeight, maxAllowedZoomByWidth);
     if (isNaN(newZoom) || newZoom <= 0) newZoom = 1;
 
   } else {
