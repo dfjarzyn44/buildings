@@ -226,11 +226,6 @@ function clampPan() {
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
-  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
-  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
-  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-  const hasLabels = showNames || showHeight || showYears;
-
   if (scaledH <= wrapperH) {
     panY = wrapperH - scaledH;
   } else {
@@ -239,15 +234,12 @@ function clampPan() {
     panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
-  if (!hasLabels) {
-    panX = 0;
+  // Przywrócono poprawną obsługę granic X – brak sztucznego resetowania panX do 0 podczas zoomu
+  if (scaledW > wrapperW) {
+    const minPanX = wrapperW - scaledW;
+    panX = Math.min(0, Math.max(minPanX, panX));
   } else {
-    if (scaledW > wrapperW) {
-      const minPanX = wrapperW - scaledW;
-      panX = Math.min(0, Math.max(minPanX, panX));
-    } else {
-      panX = 0;
-    }
+    panX = 0;
   }
 }
 
@@ -598,7 +590,6 @@ function fitToStage() {
     const maxAllowedZoomByHeight = targetH / maxBHeight;
     const maxAllowedZoomByWidth = availableW / baseContentW;
     
-    // Usunięto czynnik 1.15 – teraz zoom jest bezpiecznie przycięty do szerokości okna
     newZoom = Math.min(newZoom, maxAllowedZoomByHeight, maxAllowedZoomByWidth);
     if (isNaN(newZoom) || newZoom <= 0) newZoom = 1;
 
