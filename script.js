@@ -206,13 +206,15 @@ function updateStageHeight() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  const wrapperH = wrapper.clientHeight || 500;
+  // Jeśli etykiety są włączone, dajemy większy bufor (1.45), żeby tekst nad budynkiem się zmieścił.
+  // Jeśli są wyłączone, mamy czysty, kompaktowy naddatek 20% (1.20) idealny na wykres.
+  const multiplier = hasLabels ? 1.45 : 1.20;
+  let neededH = maxBHeight > 0 ? (maxBHeight * multiplier) : (wrapper.clientHeight || 500);
 
-  const topPaddingScreen = hasLabels ? 270 : 80;
-  const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
-  const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
-
-  const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
+  // Gwarantujemy minimalną wysokość, żeby niższe sety zawsze pomieściły linię 50m (500px)
+  if (neededH < 500) {
+    neededH = 500;
+  }
 
   stage.style.height = neededH + 'px';
   renderHeightGrid();
@@ -465,10 +467,7 @@ function renderHeightGrid() {
     const minorStep = 50; 
     const majorStep = 100;
 
-    // Sprawdzamy, czy w danym secie zmieściła się pełna linia 100m
     const has100mLine = maxMeters >= 100;
-
-    // Jeśli set jest bardzo niski (< 50m), wymuszamy rysowanie do poziomu 50m, żeby linia się pojawiła
     const loopMax = Math.max(maxMeters, has100mLine ? 0 : 50);
 
     for (let m = minorStep; m <= loopMax; m += minorStep) {
@@ -478,7 +477,6 @@ function renderHeightGrid() {
       let isMajor = (m % majorStep === 0);
       let labelText = isMajor ? `${m}m` : null;
 
-      // Jeśli to niski set (brak linii 100m), podpisujemy linię 50m jako główną
       if (!has100mLine && m === 50) {
         isMajor = true;
         labelText = '50m';
