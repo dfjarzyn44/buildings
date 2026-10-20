@@ -468,9 +468,12 @@ function renderHeightGrid() {
     // Sprawdzamy, czy w danym secie zmieściła się pełna linia 100m
     const has100mLine = maxMeters >= 100;
 
-    for (let m = minorStep; m <= maxMeters; m += minorStep) {
+    // Jeśli set jest bardzo niski (< 50m), wymuszamy rysowanie do poziomu 50m, żeby linia się pojawiła
+    const loopMax = Math.max(maxMeters, has100mLine ? 0 : 50);
+
+    for (let m = minorStep; m <= loopMax; m += minorStep) {
       const bottomPx = m * PIXELS_PER_METER;
-      if (bottomPx > stageHeight) break;
+      if (has100mLine && bottomPx > stageHeight) break;
 
       let isMajor = (m % majorStep === 0);
       let labelText = isMajor ? `${m}m` : null;
