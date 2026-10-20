@@ -465,12 +465,23 @@ function renderHeightGrid() {
     const minorStep = 50; 
     const majorStep = 100;
 
+    // Sprawdzamy, czy w danym secie zmieściła się pełna linia 100m
+    const has100mLine = maxMeters >= 100;
+
     for (let m = minorStep; m <= maxMeters; m += minorStep) {
       const bottomPx = m * PIXELS_PER_METER;
       if (bottomPx > stageHeight) break;
 
-      const isMajor = (m % majorStep === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${m}m` : null, isMajor);
+      let isMajor = (m % majorStep === 0);
+      let labelText = isMajor ? `${m}m` : null;
+
+      // Jeśli to niski set (brak linii 100m), podpisujemy linię 50m jako główną
+      if (!has100mLine && m === 50) {
+        isMajor = true;
+        labelText = '50m';
+      }
+
+      createGridLine(gridOverlay, bottomPx, labelText, isMajor);
     }
   } else {
     const minorStepFt = 100;
