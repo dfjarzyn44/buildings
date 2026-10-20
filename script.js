@@ -119,10 +119,9 @@ function updateBuildingUI() {
     const img = item.querySelector('img');
     if (img) {
       const scale = parseFloat(img.dataset.scale || 1);
-      const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
-      const effHeight = imgH * scale;
-      if (effHeight > maxBuildingHeight) {
-        maxBuildingHeight = effHeight;
+      const imgH = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
+      if (imgH > maxBuildingHeight) {
+        maxBuildingHeight = imgH;
       }
     }
   });
@@ -135,8 +134,7 @@ function updateBuildingUI() {
     if (!ui || !img) return;
 
     const scale = parseFloat(img.dataset.scale || 1);
-    const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
-    const currentHeight = imgH * scale;
+    const currentHeight = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
     const heightDiff = maxBuildingHeight - currentHeight;
 
     const dynamicMargin = Math.round(currentHeight * 0.15);
@@ -196,10 +194,9 @@ function updateStageHeight() {
     const img = item.querySelector('img');
     if (img) {
       const scale = parseFloat(img.dataset.scale || 1);
-      const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
-      const effHeight = imgH * scale;
-      if (effHeight > maxBHeight) {
-        maxBHeight = effHeight;
+      const imgH = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
+      if (imgH > maxBHeight) {
+        maxBHeight = imgH;
       }
     }
   });
@@ -234,7 +231,6 @@ function clampPan() {
     panY = Math.min(maxPanY, Math.max(minPanY, panY));
   }
 
-  // Przywrócono poprawną obsługę granic X – brak sztucznego resetowania panX do 0 podczas zoomu
   if (scaledW > wrapperW) {
     const minPanX = wrapperW - scaledW;
     panX = Math.min(0, Math.max(minPanX, panX));
@@ -569,9 +565,8 @@ function fitToStage() {
       const img = item.querySelector('img');
       if (img) {
         const scale = parseFloat(img.dataset.scale || 1);
-        const imgH = img.offsetHeight > 0 ? img.offsetHeight : (img.naturalHeight || 400);
-        const effHeight = imgH * scale;
-        if (effHeight > maxBHeight) maxBHeight = effHeight;
+        const imgH = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
+        if (imgH > maxBHeight) maxBHeight = imgH;
       }
     });
 
@@ -675,12 +670,16 @@ function addToStage(building) {
         ${uiContent}
       </div>
     </div>
-    <img src="${building.image_2d}" alt="${building.name}" style="transform: scale(${scaleMultiplier}); transform-origin: bottom center;" data-scale="${scaleMultiplier}">
+    <img src="${building.image_2d}" alt="${building.name}" data-scale="${scaleMultiplier}">
   `;
 
   const img = item.querySelector('img');
   
   const handleImageReady = () => {
+    const natH = img.naturalHeight || 400;
+    img.style.height = (natH * scaleMultiplier) + 'px';
+    img.style.width = 'auto';
+    img.style.transformOrigin = 'bottom center';
     fitToStage();
   };
 
