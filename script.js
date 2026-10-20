@@ -185,7 +185,6 @@ function updateStageHeight() {
 
   if (buildingItems.length === 0) {
     stage.style.height = '';
-    wrapper.style.height = '';
     renderHeightGrid();
     return;
   }
@@ -207,27 +206,25 @@ function updateStageHeight() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  if (!isFullscreen) {
-    if (!hasLabels) {
-      // TRYB BEZ ETYKIET: Ciasne docięcie (baner). Góra stoi na miejscu, dół dopasowuje się tuż nad najwyższy budynek + lekki margines
-      const compactH = Math.max(250, maxBHeight + 40);
-      stage.style.height = compactH + 'px';
-      wrapper.style.height = compactH + 'px';
-    } else {
-      // TRYB Z ETYKIETAMI: Pełna wysokość zapewniająca widoczność tekstów
-      const wrapperH = 450;
-      const topPaddingScreen = 270;
-      const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
-      const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
-      const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
-      
-      stage.style.height = neededH + 'px';
-      wrapper.style.height = '450px';
-    }
+  if (isFullscreen) {
+    // Oryginalna, stabilna logika dla trybu pełnoekranowego – nienaruszona
+    const wrapperH = wrapper.clientHeight || 500;
+    const topPaddingScreen = hasLabels ? 270 : 80;
+    const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
+    const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
+    const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
+    stage.style.height = neededH + 'px';
   } else {
-    // W trybie pełnoekranowym zachowujemy pełną elastyczność
-    stage.style.height = '';
-    wrapper.style.height = '';
+    // Standardowy widok (generator) z zachowaniem pełnego fullscreenu:
+    if (!hasLabels) {
+      // Bez etykiet: ciasne docięcie od dołu tuż nad najwyższy budynek + rezerwa na grubość linii
+      const tightH = maxBHeight + 40;
+      stage.style.height = Math.max(250, tightH) + 'px';
+    } else {
+      // Z etykietami: dodatkowe miejsce na nazwy i lata budowy nad najwyższym obiektem
+      const labeledH = maxBHeight + 140;
+      stage.style.height = Math.max(350, labeledH) + 'px';
+    }
   }
 
   renderHeightGrid();
