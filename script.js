@@ -1,97 +1,109 @@
+
 const PIXELS_PER_METER = 10;
 const MIN_SCREEN_PADDING = 55;
 
-let buildingsData = [], currentZoom = 1, panX = 0, panY = 0;
-let isFullscreen = false;
-let stageDim = { wrapperW: 0, wrapperH: 0, stageW: 0, stageH: 0 };
-let ticking = false;
-let addedBuildings = new Set(); 
+const CANVAS_TOP_MARGIN = 0.20;
+const EMPTY_CANVAS_HEIGHT = 450;
+const LABEL_TOP_SPACE = 270;
+const STAGE_BORDER = 12;
 
-const injectedStyles = document.createElement('style');
-injectedStyles.innerHTML = `
-  #stageWrapper {
-    touch-action: pan-x pan-y !important;
-  }
-  #stage {
-    box-sizing: border-box;
-    transform-origin: 0 0 !important;
-  }
-  .stage-wrapper.fullscreen #toggleFsBtn {
-    position: fixed !important;
-    top: 15px !important;
-    right: 15px !important;
-    z-index: 9999 !important;
-  }
-  .card.added { border: 3px solid #28a745; position: relative; box-sizing: border-box; }
-  .card.added img { opacity: 0.85; }
-  .card-remove-indicator { 
-    position: absolute; 
-    top: 5px; 
-    right: 8px; 
-    color: #dc3545; 
-    font-size: 22px; 
-    font-weight: bold; 
-    z-index: 10; 
-    pointer-events: none; 
-  }
-  .building-ui {
-    transition: transform 0.1s ease-out;
-  }
-  .grid-label {
-    position: absolute;
-    left: 4px;
-    transform-origin: left center !important;
-    white-space: nowrap;
-  }
-  .building-info {
-    max-width: 120px !important;
-    padding: 4px 6px !important;
-    font-size: 11px !important;
-    line-height: 1.2 !important;
-    text-align: center;
-  }
-  .building-name {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    font-weight: bold;
-    word-break: break-word;
-  }
-  .building-height, .building-years {
-    white-space: nowrap !important;
-    font-size: 10px !important;
-  }
-`;
-document.head.appendChild(injectedStyles);
+let buildingsData = [];
+let currentZoom = 1;
+let panX = 0;
+let panY = 0;
+
+let isFullscreen = false;
+let ticking = false;
+
+let stageDim = {
+  wrapperW: 0,
+  wrapperH: 0,
+  stageW: 0,
+  stageH: 0
+};
+
+let addedBuildings = new Set();
+
+
+/* LABEL VISIBILITY */
+
+function hasVisibleLabels() {
+  return [
+    'showNamesCheckbox',
+    'showHeightCheckbox',
+    'showYearsCheckbox'
+  ].some(id => {
+    return document.getElementById(id)?.checked ?? false;
+  });
+}
+
+
+/* BUILDING DIMENSIONS */
+
+function getBuildingHeight(img) {
+  if (!img) return 0;
+
+  const scale = Number(img.dataset.scale || 1);
+
+  return img.offsetHeight ||
+    ((img.naturalHeight || 0) * scale);
+}
+
+function getMaxBuildingHeight() {
+  const images = Array.from(
+    document.querySelectorAll('#stage .building-item img')
+  );
+
+  return Math.max(
+    0,
+    ...images.map(getBuildingHeight)
+  );
+}
+
+
+/* DYNAMIC PADDING */
 
 function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
 
-  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
-  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
-  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-  const hasLabels = showNames || showHeight || showYears;
+  const labels = hasVisibleLabels();
+  const zoom = Math.max(currentZoom, 0.001);
 
-  const minLeftPadScreen = hasLabels ? 80 : 55;
-  const minRightPadScreen = hasLabels ? 90 : 10;
+  const leftPadding = labels ? 80 : 55;
+  const rightPadding = labels ? 90 : 10;
 
-  stage.style.paddingLeft = `${Math.round(minLeftPadScreen / currentZoom)}px`;
-  stage.style.paddingRight = `${Math.round(minRightPadScreen / currentZoom)}px`;
+  stage.style.paddingLeft =
+    `${Math.round(leftPadding / zoom)}px`;
+
+  stage.style.paddingRight =
+    `${Math.round(rightPadding / zoom)}px`;
 }
+
+
+/* LOAD JSON */
 
 async function loadData() {
   try {
     const response = await fetch('budynki.json');
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     buildingsData = await response.json();
+
     renderGrid(buildingsData);
     initInteractions();
-    renderHeightGrid();
+    fitToStage();
+
   } catch (e) {
-    console.error("JSON loading error:", e);
+    console.error('JSON loading error:', e);
   }
 }
+
+
+/* DIMENSIONS CACHE */
 
 function updateDimensionsCache() {
   const wrapper = document.getElementById('stageWrapper');
@@ -103,59 +115,50 @@ function updateDimensionsCache() {
   stageDim.stageH = stage.offsetHeight || 1;
 }
 
-function updateBuildingUI() {
-  const inverseScale = 1 / currentZoom;
 
-  const gridLabels = document.querySelectorAll('.grid-label');
-  gridLabels.forEach(label => {
+/* BUILDING UI */
+
+function updateBuildingUI() {
+  const inverseScale = 1 / Math.max(currentZoom, 0.001);
+
+  document.querySelectorAll('.grid-label').forEach(label => {
     label.style.transform = `scale(${inverseScale})`;
   });
 
-  const buildingItems = Array.from(document.querySelectorAll('#stage .building-item'));
-  if (buildingItems.length === 0) return;
+  const items = Array.from(
+    document.querySelectorAll('#stage .building-item')
+  );
 
-  let maxBuildingHeight = 0;
-  buildingItems.forEach(item => {
-    const img = item.querySelector('img');
-    if (img) {
-      const scale = parseFloat(img.dataset.scale || 1);
-      const imgH = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
-      if (imgH > maxBuildingHeight) {
-        maxBuildingHeight = imgH;
-      }
-    }
-  });
+  const maxHeight = getMaxBuildingHeight();
+  const zoomedIn = currentZoom > 1.2;
 
-  const isZoomedIn = currentZoom > 1.2;
-
-  buildingItems.forEach((item, index) => {
+  items.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
     const img = item.querySelector('img');
+
     if (!ui || !img) return;
 
-    const scale = parseFloat(img.dataset.scale || 1);
-    const currentHeight = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
-    const heightDiff = maxBuildingHeight - currentHeight;
+    const height = getBuildingHeight(img);
 
-    const dynamicMargin = Math.round(currentHeight * 0.15);
-    item.style.marginRight = `${dynamicMargin}px`;
+    item.style.marginRight =
+      `${Math.round(height * 0.15)}px`;
 
     let rowOffsetScreen = 30;
 
-    if (!isZoomedIn && buildingItems.length > 1) {
-      const rowChoice = index % 3;
-      if (rowChoice === 0) rowOffsetScreen = 30;
-      else if (rowChoice === 1) rowOffsetScreen = 105;
-      else rowOffsetScreen = 180;
+    if (!zoomedIn && items.length > 1) {
+      rowOffsetScreen = [30, 105, 180][index % 3];
     }
 
-    const rowOffsetStage = rowOffsetScreen * inverseScale;
-    const totalShiftPx = heightDiff + rowOffsetStage;
+    const totalShift =
+      maxHeight - height + rowOffsetScreen * inverseScale;
 
-    const localY = -totalShiftPx * currentZoom;
-    ui.style.transform = `scale(${inverseScale}) translateY(${localY}px)`;
+    ui.style.transform =
+      `scale(${inverseScale}) translateY(${-totalShift * currentZoom}px)`;
   });
 }
+
+
+/* FULLSCREEN */
 
 function toggleFullscreen() {
   const wrapper = document.getElementById('stageWrapper');
@@ -163,154 +166,281 @@ function toggleFullscreen() {
 
   isFullscreen = !isFullscreen;
 
-  if (isFullscreen) {
-    wrapper.classList.add('fullscreen');
-    document.body.classList.add('no-scroll');
-    if (btn) btn.innerText = " Exit Canvas";
-  } else {
-    wrapper.classList.remove('fullscreen');
-    document.body.classList.remove('no-scroll');
-    if (btn) btn.innerText = " Open Interactive Canvas";
+  wrapper.classList.toggle('fullscreen', isFullscreen);
+  document.body.classList.toggle('no-scroll', isFullscreen);
+
+  if (btn) {
+    btn.innerText = isFullscreen
+      ? 'Exit Canvas'
+      : 'Open Interactive Canvas';
   }
 
-  setTimeout(() => {
-    fitToStage();
-  }, 50);
+  if (isFullscreen) {
+    wrapper.style.height = '';
+  }
+
+  requestAnimationFrame(() => fitToStage());
 }
 
+
+/* AUTOMATIC CANVAS HEIGHT */
+
 function updateStageHeight() {
-  const wrapper = document.getElementById('stageWrapper');
   const stage = document.getElementById('stage');
-  const buildingItems = stage.querySelectorAll('.building-item');
 
-  if (buildingItems.length === 0) {
-    stage.style.height = '';
-    renderHeightGrid();
-    return;
-  }
+  const maxHeight = getMaxBuildingHeight();
 
-  let maxBHeight = 0;
-  buildingItems.forEach(item => {
-    const img = item.querySelector('img');
-    if (img) {
-      const scale = parseFloat(img.dataset.scale || 1);
-      const imgH = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
-      if (imgH > maxBHeight) {
-        maxBHeight = imgH;
-      }
-    }
-  });
+  const count = stage.querySelectorAll(
+    '.building-item'
+  ).length;
 
-  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
-  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
-  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-  const hasLabels = showNames || showHeight || showYears;
+  if (!count || !maxHeight) {
 
-  if (isFullscreen) {
-    // Oryginalna, stabilna logika dla trybu pełnoekranowego – nienaruszona
-    const wrapperH = wrapper.clientHeight || 500;
-    const topPaddingScreen = hasLabels ? 270 : 80;
-    const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
-    const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
-    const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
-    stage.style.height = neededH + 'px';
+    stage.style.height =
+      EMPTY_CANVAS_HEIGHT + 'px';
+
+  } else if (!hasVisibleLabels()) {
+
+    // No labels:
+    // Tallest building + 20% empty space.
+    // Ground stays at the bottom.
+
+    const targetHeight =
+      maxHeight * (1 + CANVAS_TOP_MARGIN);
+
+    stage.style.height =
+      Math.ceil(targetHeight + STAGE_BORDER) + 'px';
+
   } else {
-    // Standardowy widok (generator) z zachowaniem pełnego fullscreenu:
-    if (!hasLabels) {
-      // Bez etykiet: ciasne docięcie od dołu tuż nad najwyższy budynek + rezerwa na grubość linii
-      const tightH = maxBHeight + 40;
-      stage.style.height = Math.max(250, tightH) + 'px';
-    } else {
-      // Z etykietami: dodatkowe miejsce na nazwy i lata budowy nad najwyższym obiektem
-      const labeledH = maxBHeight + 140;
-      stage.style.height = Math.max(350, labeledH) + 'px';
-    }
+
+    // Labels enabled:
+    // Preserve additional space for staggered labels.
+
+    const zoom = Math.max(currentZoom, 0.001);
+
+    const targetHeight =
+      maxHeight + LABEL_TOP_SPACE / zoom;
+
+    stage.style.height =
+      Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
   renderHeightGrid();
 }
 
+
+/* PAN LIMITS */
+
 function clampPan() {
-  const { wrapperW, wrapperH, stageW, stageH } = stageDim;
+  if (!isFullscreen) {
+    panX = 0;
+    panY = 0;
+    return;
+  }
+
+  const {
+    wrapperW,
+    wrapperH,
+    stageW,
+    stageH
+  } = stageDim;
+
   const scaledH = stageH * currentZoom;
   const scaledW = stageW * currentZoom;
 
   if (scaledH <= wrapperH) {
     panY = wrapperH - scaledH;
   } else {
-    const minPanY = wrapperH - scaledH;
-    const maxPanY = 0;
-    panY = Math.min(maxPanY, Math.max(minPanY, panY));
+    panY = Math.min(
+      0,
+      Math.max(wrapperH - scaledH, panY)
+    );
   }
 
   if (scaledW > wrapperW) {
-    const minPanX = wrapperW - scaledW;
-    panX = Math.min(0, Math.max(minPanX, panX));
+    panX = Math.min(
+      0,
+      Math.max(wrapperW - scaledW, panX)
+    );
   } else {
     panX = 0;
   }
 }
 
+
+/* APPLY TRANSFORM */
+
 function applyTransform() {
-  if (!ticking) {
-    requestAnimationFrame(() => {
-      updateDynamicPadding();
-      updateDimensionsCache();
-      clampPan();
+  if (ticking) return;
 
-      const displayZoom = Math.round(currentZoom * 100);
+  ticking = true;
 
-      const zoomValElem = document.getElementById('zoomVal');
-      if (zoomValElem) {
-        zoomValElem.innerText = (isNaN(displayZoom) ? 100 : displayZoom) + '%';
-      }
+  requestAnimationFrame(() => {
+    updateDynamicPadding();
+    updateDimensionsCache();
+    clampPan();
 
-      document.getElementById('stage').style.transform =
-        `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
+    const zoomValue = document.getElementById('zoomVal');
 
-      updateBuildingUI();
+    if (zoomValue) {
+      zoomValue.innerText =
+        `${Math.round(currentZoom * 100)}%`;
+    }
 
-      ticking = false;
-    });
+    document.getElementById('stage').style.transform =
+      `translate3d(${panX}px, ${panY}px, 0) scale(${currentZoom})`;
 
-    ticking = true;
-  }
+    updateBuildingUI();
+
+    ticking = false;
+  });
 }
+
+
+/* FIT CANVAS TO BUILDINGS */
+
+function fitToStage() {
+  const stage = document.getElementById('stage');
+  const wrapper = document.getElementById('stageWrapper');
+
+  const items = stage.querySelectorAll('.building-item');
+
+  if (!isFullscreen) {
+    wrapper.style.height = EMPTY_CANVAS_HEIGHT + 'px';
+  }
+
+  if (!items.length) {
+    currentZoom = 1;
+
+    updateDynamicPadding();
+    updateStageHeight();
+
+    panX = 0;
+    panY = 0;
+
+    applyTransform();
+    return;
+  }
+
+  let zoom = 1;
+
+  const labels = hasVisibleLabels();
+
+  const wrapperW = wrapper.clientWidth || 1;
+  const wrapperH = wrapper.clientHeight || EMPTY_CANVAS_HEIGHT;
+
+  // Iterative fitting accounts for dynamic padding,
+  // which changes depending on the zoom level.
+
+  for (let i = 0; i < 8; i++) {
+
+    currentZoom = zoom;
+
+    updateDynamicPadding();
+    updateBuildingUI();
+    updateStageHeight();
+    updateDimensionsCache();
+
+    const horizontalPadding = labels ? 170 : 65;
+
+    const widthFit = Math.max(
+      0.001,
+      (wrapperW - horizontalPadding) /
+      Math.max(
+        1,
+        stageDim.stageW - horizontalPadding / zoom
+      )
+    );
+
+    // Compact preview uses width-based fitting.
+    // Height follows the actual building comparison.
+
+    const heightFit = (labels || isFullscreen)
+      ? wrapperH / Math.max(1, stageDim.stageH)
+      : Infinity;
+
+    const next = Math.min(
+      1,
+      widthFit,
+      heightFit
+    );
+
+    if (!Number.isFinite(next) || next <= 0) {
+      break;
+    }
+
+    if (Math.abs(next - zoom) < 0.0001) {
+      zoom = next;
+      break;
+    }
+
+    zoom = next;
+  }
+
+  currentZoom = zoom;
+
+  updateDynamicPadding();
+  updateBuildingUI();
+  updateStageHeight();
+  updateDimensionsCache();
+
+  // Normal preview without labels:
+  // Container height follows the scaled canvas.
+
+  if (!isFullscreen && !labels) {
+    wrapper.style.height =
+      Math.ceil(stageDim.stageH * currentZoom) + 'px';
+  }
+
+  panX = 0;
+
+  panY = isFullscreen
+    ? stageDim.wrapperH - stageDim.stageH * currentZoom
+    : 0;
+
+  applyTransform();
+}
+
+
+/* USER INTERACTIONS */
 
 function initInteractions() {
   const stage = document.getElementById('stage');
 
-  const showNamesCheckbox = document.getElementById('showNamesCheckbox');
-  if (showNamesCheckbox) {
-    showNamesCheckbox.addEventListener('change', (e) => {
-      stage.classList.toggle('hide-names', !e.target.checked);
+  const labelControls = [
+    ['showNamesCheckbox', 'hide-names'],
+    ['showHeightCheckbox', 'hide-height'],
+    ['showYearsCheckbox', 'hide-years']
+  ];
+
+  labelControls.forEach(([id, cls]) => {
+    const checkbox = document.getElementById(id);
+
+    if (!checkbox) return;
+
+    stage.classList.toggle(cls, !checkbox.checked);
+
+    checkbox.addEventListener('change', () => {
+      stage.classList.toggle(cls, !checkbox.checked);
       fitToStage();
     });
+  });
+
+  const gridCheckbox =
+    document.getElementById('showGridCheckbox');
+
+  if (gridCheckbox) {
+    gridCheckbox.checked = true;
+
+    gridCheckbox.addEventListener(
+      'change',
+      toggleGridControls
+    );
   }
 
-  const showHeightCheckbox = document.getElementById('showHeightCheckbox');
-  if (showHeightCheckbox) {
-    showHeightCheckbox.addEventListener('change', (e) => {
-      stage.classList.toggle('hide-height', !e.target.checked);
-      fitToStage();
-    });
-  }
-
-  const showYearsCheckbox = document.getElementById('showYearsCheckbox');
-  if (showYearsCheckbox) {
-    showYearsCheckbox.addEventListener('change', (e) => {
-      stage.classList.toggle('hide-years', !e.target.checked);
-      fitToStage();
-    });
-  }
-
-  const showGridCheckbox = document.getElementById('showGridCheckbox');
-  if (showGridCheckbox) {
-    showGridCheckbox.checked = true; 
-    showGridCheckbox.addEventListener('change', toggleGridControls);
-  }
-
-  document.querySelectorAll('input[name="gridUnit"]').forEach(radio => {
+  document.querySelectorAll(
+    'input[name="gridUnit"]'
+  ).forEach(radio => {
     radio.addEventListener('change', renderHeightGrid);
   });
 
@@ -318,36 +448,56 @@ function initInteractions() {
 
   const wrapper = document.getElementById('stageWrapper');
 
-  wrapper.addEventListener('wheel', (e) => {
+
+  /* MOUSE WHEEL ZOOM */
+
+  wrapper.addEventListener('wheel', e => {
     if (!isFullscreen) return;
+
     e.preventDefault();
 
-    const zoomStep = 0.12;
-    const factor = e.deltaY < 0 ? (1 + zoomStep) : (1 / (1 + zoomStep));
-    const newZoom = Math.min(Math.max(currentZoom * factor, 0.05), 5);
+    const factor = e.deltaY < 0
+      ? 1.12
+      : 1 / 1.12;
+
+    const newZoom = Math.min(
+      5,
+      Math.max(0.05, currentZoom * factor)
+    );
+
     const actualFactor = newZoom / currentZoom;
 
     const rect = wrapper.getBoundingClientRect();
+
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    panX = mouseX - MIN_SCREEN_PADDING - (mouseX - panX - MIN_SCREEN_PADDING) * actualFactor;
-    panY = mouseY - (mouseY - panY) * actualFactor;
-    
+    panX =
+      mouseX - MIN_SCREEN_PADDING -
+      (mouseX - panX - MIN_SCREEN_PADDING) * actualFactor;
+
+    panY =
+      mouseY - (mouseY - panY) * actualFactor;
+
     currentZoom = newZoom;
+
     applyTransform();
+
   }, { passive: false });
 
-  let isDown = false;
-  let startX, startY;
-  let touchStartDist = 0;
-  let touchStartZoom = 1;
-  let touchStartPanX = 0, touchStartPanY = 0;
-  let touchStartMidX = 0, touchStartMidY = 0;
 
-  wrapper.addEventListener('mousedown', (e) => {
+  /* MOUSE DRAG */
+
+  let isDown = false;
+
+  let startX = 0;
+  let startY = 0;
+
+  wrapper.addEventListener('mousedown', e => {
     if (!isFullscreen) return;
+
     isDown = true;
+
     startX = e.clientX - panX;
     startY = e.clientY - panY;
   });
@@ -356,14 +506,28 @@ function initInteractions() {
     isDown = false;
   });
 
-  wrapper.addEventListener('mousemove', (e) => {
+  wrapper.addEventListener('mousemove', e => {
     if (!isDown || !isFullscreen) return;
+
     panX = e.clientX - startX;
     panY = e.clientY - startY;
+
     applyTransform();
   });
 
-  wrapper.addEventListener('touchstart', (e) => {
+
+  /* TOUCH CONTROLS */
+
+  let touchStartDist = 0;
+  let touchStartZoom = 1;
+
+  let touchStartPanX = 0;
+  let touchStartPanY = 0;
+
+  let touchStartMidX = 0;
+  let touchStartMidY = 0;
+
+  wrapper.addEventListener('touchstart', e => {
     if (!isFullscreen) return;
 
     if (e.touches.length >= 3) {
@@ -374,24 +538,39 @@ function initInteractions() {
 
     if (e.touches.length === 1) {
       isDown = true;
+
       startX = e.touches[0].clientX - panX;
       startY = e.touches[0].clientY - panY;
+
     } else if (e.touches.length === 2) {
+
       isDown = false;
+
       touchStartDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+
       const rect = wrapper.getBoundingClientRect();
-      touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+      touchStartMidX =
+        (e.touches[0].clientX + e.touches[1].clientX) / 2 -
+        rect.left;
+
+      touchStartMidY =
+        (e.touches[0].clientY + e.touches[1].clientY) / 2 -
+        rect.top;
+
       touchStartZoom = currentZoom;
+
       touchStartPanX = panX;
       touchStartPanY = panY;
     }
+
   }, { passive: true });
 
-  wrapper.addEventListener('touchmove', (e) => {
+
+  wrapper.addEventListener('touchmove', e => {
     if (!isFullscreen) return;
 
     if (e.touches.length >= 3) {
@@ -401,34 +580,64 @@ function initInteractions() {
     }
 
     if (e.touches.length === 2) {
-      if (e.cancelable) e.preventDefault();
-      const currentDist = Math.hypot(
+
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      const dist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      if (currentDist === 0 || touchStartDist === 0) return;
+
+      if (!dist || !touchStartDist) return;
 
       const rect = wrapper.getBoundingClientRect();
-      const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-      const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-      const factor = currentDist / touchStartDist;
-      const newZoom = Math.min(Math.max(touchStartZoom * factor, 0.05), 5);
+      const midX =
+        (e.touches[0].clientX + e.touches[1].clientX) / 2 -
+        rect.left;
+
+      const midY =
+        (e.touches[0].clientY + e.touches[1].clientY) / 2 -
+        rect.top;
+
+      const newZoom = Math.min(
+        5,
+        Math.max(
+          0.05,
+          touchStartZoom * dist / touchStartDist
+        )
+      );
+
       const scaleFactor = newZoom / touchStartZoom;
 
-      panX = currentMidX - MIN_SCREEN_PADDING - (touchStartMidX - touchStartPanX - MIN_SCREEN_PADDING) * scaleFactor;
-      panY = currentMidY - (touchStartMidY - touchStartPanY) * scaleFactor;
+      panX =
+        midX - MIN_SCREEN_PADDING -
+        (touchStartMidX - touchStartPanX - MIN_SCREEN_PADDING) *
+        scaleFactor;
+
+      panY =
+        midY -
+        (touchStartMidY - touchStartPanY) * scaleFactor;
 
       currentZoom = newZoom;
+
       applyTransform();
+
     } else if (e.touches.length === 1 && isDown) {
+
       panX = e.touches[0].clientX - startX;
       panY = e.touches[0].clientY - startY;
+
       applyTransform();
     }
+
   }, { passive: false });
 
-  wrapper.addEventListener('touchend', (e) => {
+
+  wrapper.addEventListener('touchend', e => {
+
     if (e.touches.length >= 3) {
       isDown = false;
       touchStartDist = 0;
@@ -438,307 +647,350 @@ function initInteractions() {
     if (e.touches.length < 2) {
       touchStartDist = 0;
     }
+
     if (e.touches.length === 1) {
       isDown = true;
+
       startX = e.touches[0].clientX - panX;
       startY = e.touches[0].clientY - panY;
+
     } else {
       isDown = false;
     }
   });
 
-  window.addEventListener('resize', () => {
-    fitToStage();
-    renderHeightGrid();
-  });
+  window.addEventListener('resize', fitToStage);
 }
 
+
+/* HEIGHT GRID */
+
 function renderHeightGrid() {
-  const gridOverlay = document.getElementById('gridOverlay');
-  const showGridCheckbox = document.getElementById('showGridCheckbox');
-  if (!gridOverlay || !showGridCheckbox) return;
+  const overlay = document.getElementById('gridOverlay');
 
-  gridOverlay.innerHTML = '';
+  const checkbox =
+    document.getElementById('showGridCheckbox');
 
-  if (!showGridCheckbox.checked) {
-    gridOverlay.style.display = 'none';
+  if (!overlay || !checkbox) return;
+
+  overlay.innerHTML = '';
+
+  if (!checkbox.checked) {
+    overlay.style.display = 'none';
     return;
   }
 
-  gridOverlay.style.display = 'block';
+  overlay.style.display = 'block';
 
-  const unit = document.querySelector('input[name="gridUnit"]:checked')?.value || 'metric';
-  const stage = document.getElementById('stage');
-  const stageHeight = stage ? stage.clientHeight : 500;
+  const unit = document.querySelector(
+    'input[name="gridUnit"]:checked'
+  )?.value || 'metric';
+
+  const stageHeight =
+    document.getElementById('stage')?.clientHeight ||
+    EMPTY_CANVAS_HEIGHT;
 
   const maxMeters = stageHeight / PIXELS_PER_METER;
 
   if (unit === 'metric') {
-    const minorStep = 50; 
-    const majorStep = 100;
 
-    const has100mLine = maxMeters >= 100;
-    const loopMax = Math.max(maxMeters, has100mLine ? 0 : 50);
+    const has100 = maxMeters >= 100;
 
-    for (let m = minorStep; m <= loopMax; m += minorStep) {
+    const loopMax = Math.max(
+      maxMeters,
+      has100 ? 0 : 50
+    );
+
+    for (let m = 50; m <= loopMax; m += 50) {
+
       const bottomPx = m * PIXELS_PER_METER;
-      if (has100mLine && bottomPx > stageHeight) break;
 
-      let isMajor = (m % majorStep === 0);
-      let labelText = isMajor ? `${m}m` : null;
-
-      if (!has100mLine && m === 50) {
-        isMajor = true;
-        labelText = '50m';
+      if (has100 && bottomPx > stageHeight) {
+        break;
       }
 
-      createGridLine(gridOverlay, bottomPx, labelText, isMajor);
+      const major =
+        m % 100 === 0 || (!has100 && m === 50);
+
+      createGridLine(
+        overlay,
+        bottomPx,
+        major ? `${m}m` : null,
+        major
+      );
     }
+
   } else {
-    const minorStepFt = 100;
-    const majorStepFt = 500;
+
     const maxFeet = maxMeters / 0.3048;
 
-    for (let ft = minorStepFt; ft <= maxFeet; ft += minorStepFt) {
-      const meters = ft * 0.3048;
-      const bottomPx = meters * PIXELS_PER_METER;
+    for (let ft = 100; ft <= maxFeet; ft += 100) {
+
+      const bottomPx =
+        ft * 0.3048 * PIXELS_PER_METER;
+
       if (bottomPx > stageHeight) break;
 
-      const isMajor = (ft % majorStepFt === 0);
-      createGridLine(gridOverlay, bottomPx, isMajor ? `${ft}ft` : null, isMajor);
+      const major = ft % 500 === 0;
+
+      createGridLine(
+        overlay,
+        bottomPx,
+        major ? `${ft}ft` : null,
+        major
+      );
     }
   }
 
   updateBuildingUI();
 }
 
+
+/* CREATE GRID LINE */
+
 function createGridLine(container, bottomPx, labelText, isMajor) {
   const line = document.createElement('div');
-  line.className = `grid-line ${isMajor ? 'major' : 'minor'}`;
+
+  line.className =
+    `grid-line ${isMajor ? 'major' : 'minor'}`;
+
   line.style.bottom = `${bottomPx}px`;
 
   if (labelText) {
     const label = document.createElement('span');
+
     label.className = 'grid-label';
     label.textContent = labelText;
+
     line.appendChild(label);
   }
 
   container.appendChild(line);
 }
 
-function toggleGridControls() {
-  const showGridCheckbox = document.getElementById('showGridCheckbox');
-  const showGrid = showGridCheckbox ? showGridCheckbox.checked : false;
-  const unitRadios = document.querySelectorAll('input[name="gridUnit"]');
-  const unitSelector = document.getElementById('unitSelector');
 
-  unitRadios.forEach(radio => {
-    radio.disabled = !showGrid;
+/* GRID CONTROLS */
+
+function toggleGridControls() {
+  const show =
+    document.getElementById('showGridCheckbox')?.checked ??
+    false;
+
+  document.querySelectorAll(
+    'input[name="gridUnit"]'
+  ).forEach(radio => {
+    radio.disabled = !show;
   });
 
-  if (unitSelector) {
-    unitSelector.classList.toggle('disabled', !showGrid);
-  }
+  document.getElementById('unitSelector')
+    ?.classList.toggle('disabled', !show);
 
   renderHeightGrid();
 }
+
+
+/* CLEAR CANVAS */
 
 function clearStage() {
-  const stage = document.getElementById('stage');
-  if (stage) {
-    const items = stage.querySelectorAll('.building-item');
-    items.forEach(item => item.remove());
-  }
+  document.querySelectorAll(
+    '#stage .building-item'
+  ).forEach(item => item.remove());
+
   addedBuildings.clear();
+
   filterData();
   fitToStage();
-  renderHeightGrid();
 }
 
-function fitToStage() {
-  updateStageHeight();
-  updateDynamicPadding();
-  updateDimensionsCache();
 
-  const stage = document.getElementById('stage');
-  const buildingItems = stage.querySelectorAll('.building-item');
-
-  if (buildingItems.length === 0) {
-    currentZoom = 1;
-    panX = 0;
-    panY = 0;
-    applyTransform();
-    return;
-  }
-
-  const showNames = document.getElementById('showNamesCheckbox')?.checked ?? true;
-  const showHeight = document.getElementById('showHeightCheckbox')?.checked ?? true;
-  const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
-  const hasLabels = showNames || showHeight || showYears;
-
-  const wrapperW = stageDim.wrapperW;
-  const wrapperH = stageDim.wrapperH;
-
-  let newZoom;
-  if (!hasLabels) {
-    let maxBHeight = 0;
-    buildingItems.forEach(item => {
-      const img = item.querySelector('img');
-      if (img) {
-        const scale = parseFloat(img.dataset.scale || 1);
-        const imgH = img.offsetHeight > 0 ? img.offsetHeight : ((img.naturalHeight || 400) * scale);
-        if (imgH > maxBHeight) maxBHeight = imgH;
-      }
-    });
-
-    const targetH = wrapperH - 55;
-    const zoomY = maxBHeight > 0 ? (targetH / maxBHeight) : 1;
-
-    const leftPad = 55;
-    const rightPad = 15;
-    const availableW = wrapperW - leftPad - rightPad;
-    
-    const baseContentW = stageDim.stageW - (leftPad / (currentZoom || 1));
-    const zoomX = baseContentW > 0 ? (availableW / baseContentW) : 1;
-
-    newZoom = Math.max(zoomX, zoomY);
-
-    const maxAllowedZoomByHeight = targetH / maxBHeight;
-    const maxAllowedZoomByWidth = availableW / baseContentW;
-    
-    newZoom = Math.min(newZoom, maxAllowedZoomByHeight, maxAllowedZoomByWidth);
-    if (isNaN(newZoom) || newZoom <= 0) newZoom = 1;
-
-  } else {
-    const scaleX = wrapperW / stageDim.stageW;
-    const scaleY = wrapperH / stageDim.stageH;
-    newZoom = Math.min(scaleX, scaleY, 1);
-  }
-
-  if (isNaN(newZoom) || !isFinite(newZoom) || newZoom <= 0) {
-    newZoom = 1;
-  }
-
-  currentZoom = newZoom;
-
-  updateDynamicPadding();
-  updateDimensionsCache();
-
-  panX = 0;
-  panY = stageDim.wrapperH - (stageDim.stageH * currentZoom);
-
-  if (isNaN(panY)) {
-    panY = 0;
-  }
-
-  applyTransform();
-}
+/* REMOVE BUILDING */
 
 function removeBuilding(name) {
   addedBuildings.delete(name);
-  const stage = document.getElementById('stage');
-  const items = stage.querySelectorAll('.building-item');
-  
-  items.forEach(item => {
+
+  document.querySelectorAll(
+    '#stage .building-item'
+  ).forEach(item => {
+
     if (item.dataset.name === name) {
       item.remove();
     }
+
   });
 
-  filterData(); 
+  filterData();
   fitToStage();
 }
 
+
+/* ADD BUILDING */
+
 function addToStage(building) {
   if (addedBuildings.has(building.name)) return;
+
   addedBuildings.add(building.name);
 
   const stage = document.getElementById('stage');
 
   const item = document.createElement('div');
+
   item.className = 'building-item';
   item.dataset.name = building.name;
 
   let heightStr = '';
+
   if (building.height_m && building.height_m !== 'N/A') {
+
     heightStr = `${building.height_m} m`;
+
     if (building.height_ft && building.height_ft !== 'N/A') {
       heightStr += ` / ${building.height_ft} ft`;
     }
+
   } else if (building.height_ft && building.height_ft !== 'N/A') {
+
     heightStr = `${building.height_ft} ft`;
   }
 
-  let builtStr = '';
   const year = building.year_built || building.built;
-  if (year && year !== 'N/A') {
-    builtStr = `${year}`;
-  }
 
-  let uiContent = `<div class="building-name">${building.name}</div>`;
+  const builtStr =
+    year && year !== 'N/A' ? String(year) : '';
+
+  const info = document.createElement('div');
+  info.className = 'building-ui';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'building-info';
+
+  const name = document.createElement('div');
+
+  name.className = 'building-name';
+  name.textContent = building.name;
+
+  bubble.appendChild(name);
+
   if (heightStr) {
-    uiContent += `<div class="building-height">${heightStr}</div>`;
+    const el = document.createElement('div');
+
+    el.className = 'building-height';
+    el.textContent = heightStr;
+
+    bubble.appendChild(el);
   }
+
   if (builtStr) {
-    uiContent += `<div class="building-years">${builtStr}</div>`;
+    const el = document.createElement('div');
+
+    el.className = 'building-years';
+    el.textContent = builtStr;
+
+    bubble.appendChild(el);
   }
 
-  const scaleMultiplier = (building.scale_multiplier !== undefined && building.scale_multiplier !== null) ? Number(building.scale_multiplier) : 1;
+  info.appendChild(bubble);
+  item.appendChild(info);
 
-  item.innerHTML = `
-    <div class="building-ui">
-      <div class="building-info">
-        ${uiContent}
-      </div>
-    </div>
-    <img src="${building.image_2d}" alt="${building.name}" data-scale="${scaleMultiplier}">
-  `;
+  const img = document.createElement('img');
 
-  const img = item.querySelector('img');
-  
-  const handleImageReady = () => {
-    const natH = img.naturalHeight || 400;
-    img.style.height = (natH * scaleMultiplier) + 'px';
+  img.src = building.image_2d;
+  img.alt = building.name;
+
+  const scale = building.scale_multiplier != null
+    ? Number(building.scale_multiplier)
+    : 1;
+
+  img.dataset.scale = String(
+    Number.isFinite(scale) && scale > 0 ? scale : 1
+  );
+
+  item.appendChild(img);
+  stage.appendChild(item);
+
+  const ready = () => {
+
+    img.style.height =
+      `${img.naturalHeight * Number(img.dataset.scale)}px`;
+
     img.style.width = 'auto';
     img.style.transformOrigin = 'bottom center';
+
     fitToStage();
   };
 
-  if (img.complete) {
-    requestAnimationFrame(handleImageReady);
+  if (img.complete && img.naturalHeight) {
+
+    requestAnimationFrame(ready);
+
   } else {
-    img.onload = handleImageReady;
+
+    img.onload = ready;
+
+    img.onerror = () => {
+      console.error('Image loading error:', img.src);
+      fitToStage();
+    };
   }
 
-  stage.appendChild(item);
-  filterData(); 
+  filterData();
   fitToStage();
 }
 
+
+/* RENDER BUILDING CARDS */
+
 function renderGrid(data) {
   const grid = document.getElementById('buildingsGrid');
+
   if (!grid) return;
+
   grid.innerHTML = '';
 
   data.forEach(b => {
-    const isAdded = addedBuildings.has(b.name);
+
+    const added = addedBuildings.has(b.name);
+
     const card = document.createElement('div');
-    card.className = `card ${isAdded ? 'added' : ''}`;
 
-    const city = b.city || '';
-    const country = b.country || '';
-    const locationText = [city, country].filter(Boolean).join(', ');
+    card.className = `card ${added ? 'added' : ''}`;
 
-    card.innerHTML = `
-      ${isAdded ? `<div class="card-remove-indicator">&times;</div>` : ''}
-      <img src="${b.thumbnail}" alt="${b.name}">
-      <h3>${b.name}</h3>
-      ${locationText ? `<p class="card-location">${locationText}</p>` : ''}
-    `;
+    if (added) {
+      const indicator = document.createElement('div');
+
+      indicator.className = 'card-remove-indicator';
+      indicator.textContent = '×';
+
+      card.appendChild(indicator);
+    }
+
+    const img = document.createElement('img');
+
+    img.src = b.thumbnail;
+    img.alt = b.name;
+
+    card.appendChild(img);
+
+    const title = document.createElement('h3');
+
+    title.textContent = b.name;
+
+    card.appendChild(title);
+
+    const location = [b.city, b.country]
+      .filter(Boolean)
+      .join(', ');
+
+    if (location) {
+      const p = document.createElement('p');
+
+      p.className = 'card-location';
+      p.textContent = location;
+
+      card.appendChild(p);
+    }
 
     card.onclick = () => {
-      if (isAdded) {
+      if (addedBuildings.has(b.name)) {
         removeBuilding(b.name);
       } else {
         addToStage(b);
@@ -749,32 +1001,30 @@ function renderGrid(data) {
   });
 }
 
-setupFilters();
+
+/* SEARCH */
 
 function setupFilters() {
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', filterData);
-  }
+  document.getElementById('searchInput')
+    ?.addEventListener('input', filterData);
 }
 
 function filterData() {
-  const searchInput = document.getElementById('searchInput');
-  const search = searchInput ? searchInput.value.toLowerCase() : '';
-  
+  const search = (
+    document.getElementById('searchInput')?.value || ''
+  ).toLowerCase();
+
   const filtered = buildingsData.filter(b => {
-    const name = (b.name || '').toLowerCase();
-    const city = (b.city || '').toLowerCase();
-    const country = (b.country || '').toLowerCase();
-    
-    return (
-      name.includes(search) ||
-      city.includes(search) ||
-      country.includes(search)
+    return [b.name, b.city, b.country].some(value =>
+      (value || '').toLowerCase().includes(search)
     );
   });
 
   renderGrid(filtered);
 }
 
+
+/* START APPLICATION */
+
+setupFilters();
 loadData();
