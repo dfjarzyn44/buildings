@@ -185,6 +185,7 @@ function updateStageHeight() {
 
   if (buildingItems.length === 0) {
     stage.style.height = '';
+    wrapper.style.height = '';
     renderHeightGrid();
     return;
   }
@@ -206,26 +207,29 @@ function updateStageHeight() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  let neededH;
-
-  if (!hasLabels) {
-    // Tryb czystego wykresu (bez etykiet): ciasne dopasowanie do najwyższego budynku + 15% naddatku na górze
-    neededH = maxBHeight * 1.15;
-    
-    // Zabezpieczenie minimalnej wysokości, żeby niższe sety pomieściły siatkę (np. linię 50m)
-    if (neededH < 500) {
-      neededH = 500;
+  if (!isFullscreen) {
+    if (!hasLabels) {
+      // TRYB BEZ ETYKIET: Ciasne docięcie (baner). Góra stoi na miejscu, dół dopasowuje się tuż nad najwyższy budynek + lekki margines
+      const compactH = Math.max(250, maxBHeight + 40);
+      stage.style.height = compactH + 'px';
+      wrapper.style.height = compactH + 'px';
+    } else {
+      // TRYB Z ETYKIETAMI: Pełna wysokość zapewniająca widoczność tekstów
+      const wrapperH = 450;
+      const topPaddingScreen = 270;
+      const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
+      const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
+      const neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
+      
+      stage.style.height = neededH + 'px';
+      wrapper.style.height = '450px';
     }
   } else {
-    // Tryb z etykietami: zachowujemy oryginalną logikę zapewniającą miejsce na opisy
-    const wrapperH = wrapper.clientHeight || 500;
-    const topPaddingScreen = 270;
-    const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
-    const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
-    neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
+    // W trybie pełnoekranowym zachowujemy pełną elastyczność
+    stage.style.height = '';
+    wrapper.style.height = '';
   }
 
-  stage.style.height = neededH + 'px';
   renderHeightGrid();
 }
 
