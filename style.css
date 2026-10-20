@@ -156,11 +156,12 @@ select {
   background: #e2e2e2;
 }
 
-/* STAGE WRAPPER */
+/* STAGE WRAPPER - usunięto sztywne height: 450px, teraz dopasowuje się dynamicznie */
 
 .stage-wrapper {
   width: 100%;
-  height: 450px;
+  min-height: 250px;
+  max-height: 450px;
   border: 1px solid #ccc;
   border-radius: 8px;
   background: #ffffff;
