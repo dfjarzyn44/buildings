@@ -156,12 +156,11 @@ select {
   background: #e2e2e2;
 }
 
-/* STAGE WRAPPER - usunięto sztywne height: 450px, teraz dopasowuje się dynamicznie */
+/* STAGE WRAPPER */
 
 .stage-wrapper {
   width: 100%;
-  min-height: 250px;
-  max-height: 450px;
+  height: 450px;
   border: 1px solid #ccc;
   border-radius: 8px;
   background: #ffffff;
@@ -217,8 +216,8 @@ select {
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  gap: 120px;                     /* Zwiększona przerwa między budynkami */
-  padding: 160px 30px 0 80px;      /* 80px z lewej daje miejsce na liczby siatki */
+  gap: 120px;                     
+  padding: 160px 30px 0 80px;      
   box-sizing: border-box;
   min-width: 100%;
   width: max-content;
