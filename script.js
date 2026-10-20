@@ -206,14 +206,23 @@ function updateStageHeight() {
   const showYears = document.getElementById('showYearsCheckbox')?.checked ?? true;
   const hasLabels = showNames || showHeight || showYears;
 
-  // Jeśli etykiety są włączone, dajemy większy bufor (1.45), żeby tekst nad budynkiem się zmieścił.
-  // Jeśli są wyłączone, mamy czysty, kompaktowy naddatek 20% (1.20) idealny na wykres.
-  const multiplier = hasLabels ? 1.45 : 1.20;
-  let neededH = maxBHeight > 0 ? (maxBHeight * multiplier) : (wrapper.clientHeight || 500);
+  let neededH;
 
-  // Gwarantujemy minimalną wysokość, żeby niższe sety zawsze pomieściły linię 50m (500px)
-  if (neededH < 500) {
-    neededH = 500;
+  if (!hasLabels) {
+    // Tryb czystego wykresu (bez etykiet): ciasne dopasowanie do najwyższego budynku + 15% naddatku na górze
+    neededH = maxBHeight * 1.15;
+    
+    // Zabezpieczenie minimalnej wysokości, żeby niższe sety pomieściły siatkę (np. linię 50m)
+    if (neededH < 500) {
+      neededH = 500;
+    }
+  } else {
+    // Tryb z etykietami: zachowujemy oryginalną logikę zapewniającą miejsce na opisy
+    const wrapperH = wrapper.clientHeight || 500;
+    const topPaddingScreen = 270;
+    const safeTopPadding = Math.min(topPaddingScreen, wrapperH - 100);
+    const targetBuildingScreenH = Math.max(50, wrapperH - safeTopPadding);
+    neededH = maxBHeight > 0 ? (maxBHeight * wrapperH / targetBuildingScreenH) : wrapperH;
   }
 
   stage.style.height = neededH + 'px';
