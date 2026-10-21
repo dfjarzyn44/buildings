@@ -1,7 +1,7 @@
 const PIXELS_PER_METER = 10;
 const MIN_SCREEN_PADDING = 55;
 
-const CANVAS_TOP_MARGIN = 0.20; // Przywrócony 20% margines nad najwyższym budynkiem
+const CANVAS_TOP_MARGIN = 0.20;
 const EMPTY_CANVAS_HEIGHT = 450;
 const STAGE_BORDER = 12;
 
@@ -60,7 +60,7 @@ function updateDynamicPadding() {
 
   const zoom = Math.max(currentZoom, 0.001);
   const leftPadding = 80;
-  const rightPadding = 50;
+  const rightPadding = 10; // Prawidłowy, zoptymalizowany prawy margines
 
   stage.style.paddingLeft = `${Math.round(leftPadding / zoom)}px`;
   stage.style.paddingRight = `${Math.round(rightPadding / zoom)}px`;
@@ -213,7 +213,7 @@ function toggleFullscreen() {
 }
 
 
-/* AUTOMATIC CANVAS HEIGHT (Z PRZYWRÓCONYM MARGINESEM U GÓRY) */
+/* AUTOMATIC CANVAS HEIGHT */
 
 function updateStageHeight() {
   const stage = document.getElementById('stage');
@@ -223,7 +223,6 @@ function updateStageHeight() {
   if (!count || !maxHeight) {
     stage.style.height = EMPTY_CANVAS_HEIGHT + 'px';
   } else {
-    // Najwyższy budynek + 20% przestrzeni u góry płótna
     const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
     stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
@@ -366,7 +365,8 @@ function initInteractions() {
     if (!checkbox) return;
 
     checkbox.addEventListener('change', () => {
-      updateExternalTable();
+      updateBuildingUI();
+      fitToStage();
     });
   });
 
@@ -384,7 +384,7 @@ function initInteractions() {
 
   const wrapper = document.getElementById('stageWrapper');
 
-  /* MOUSE WHEEL ZOOM */
+  /* MOUSE WHEEL ZOOM (Przywrócone przybliżanie pod kursor) */
   wrapper.addEventListener('wheel', e => {
     if (!isFullscreen) return;
     e.preventDefault();
@@ -425,6 +425,83 @@ function initInteractions() {
     panX = e.clientX - startX;
     panY = e.clientY - startY;
     applyTransform();
+  });
+
+  /* TOUCH CONTROLS (Przywrócona pełna obsługa dotyku i pinch-zoom pod palce) */
+  let touchStartDist = 0;
+  let touchStartZoom = 1;
+  let touchStartPanX = 0;
+  let touchStartPanY = 0;
+  let touchStartMidX = 0;
+  let touchStartMidY = 0;
+
+  wrapper.addEventListener('touchstart', e => {
+    if (!isFullscreen) return;
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
+    if (e.touches.length === 1) {
+      isDown = true;
+      startX = e.touches[0].clientX - panX;
+      startY = e.touches[0].clientY - panY;
+    } else if (e.touches.length === 2) {
+      isDown = false;
+      touchStartDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const rect = wrapper.getBoundingClientRect();
+      touchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      touchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      touchStartZoom = currentZoom;
+      touchStartPanX = panX;
+      touchStartPanY = panY;
+    }
+  }, { passive: true });
+
+  wrapper.addEventListener('touchmove', e => {
+    if (!isFullscreen) return;
+    if (e.touches.length >= 3) {
+      isDown = false;
+      touchStartDist = 0;
+      return;
+    }
+    if (e.touches.length === 2) {
+      if (e.cancelable) e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (!dist || !touchStartDist) return;
+      const rect = wrapper.getBoundingClientRect();
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+      const newZoom = Math.min(5, Math.max(0.05, touchStartZoom * dist / touchStartDist));
+      const scaleFactor = newZoom / touchStartZoom;
+
+      panX = midX - MIN_SCREEN_PADDING - (touchStartMidX - touchStartPanX - MIN_SCREEN_PADDING) * scaleFactor;
+      panY = midY - (touchStartMidY - touchStartPanY) * scaleFactor;
+      currentZoom = newZoom;
+      applyTransform();
+    } else if (e.touches.length === 1 && isDown) {
+      panX = e.touches[0].clientX - startX;
+      panY = e.touches[0].clientY - startY;
+      applyTransform();
+    }
+  }, { passive: false });
+
+  wrapper.addEventListener('touchend', e => {
+    if (e.touches.length < 2) touchStartDist = 0;
+    if (e.touches.length === 1) {
+      isDown = true;
+      startX = e.touches[0].clientX - panX;
+      startY = e.touches[0].clientY - panY;
+    } else {
+      isDown = false;
+    }
   });
 
   window.addEventListener('resize', fitToStage);
