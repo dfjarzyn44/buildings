@@ -187,42 +187,18 @@ function toggleFullscreen() {
 
 function updateStageHeight() {
   const stage = document.getElementById('stage');
-
   const maxHeight = getMaxBuildingHeight();
-
-  const count = stage.querySelectorAll(
-    '.building-item'
-  ).length;
+  const count = stage.querySelectorAll('.building-item').length;
 
   if (!count || !maxHeight) {
-
-    stage.style.height =
-      EMPTY_CANVAS_HEIGHT + 'px';
-
+    stage.style.height = EMPTY_CANVAS_HEIGHT + 'px';
   } else if (!hasVisibleLabels()) {
-
-    // No labels:
-    // Tallest building + 20% empty space.
-    // Ground stays at the bottom.
-
-    const targetHeight =
-      maxHeight * (1 + CANVAS_TOP_MARGIN);
-
-    stage.style.height =
-      Math.ceil(targetHeight + STAGE_BORDER) + 'px';
-
+    const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
+    stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   } else {
-
-    // Labels enabled:
-    // Preserve additional space for staggered labels.
-
     const zoom = Math.max(currentZoom, 0.001);
-
-    const targetHeight =
-      maxHeight + LABEL_TOP_SPACE / zoom;
-
-    stage.style.height =
-      Math.ceil(targetHeight + STAGE_BORDER) + 'px';
+    const targetHeight = maxHeight + LABEL_TOP_SPACE / zoom;
+    stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
   renderHeightGrid();
@@ -302,7 +278,6 @@ function applyTransform() {
 function fitToStage() {
   const stage = document.getElementById('stage');
   const wrapper = document.getElementById('stageWrapper');
-
   const items = stage.querySelectorAll('.building-item');
 
   if (!isFullscreen) {
@@ -311,59 +286,49 @@ function fitToStage() {
 
   if (!items.length) {
     currentZoom = 1;
-
     updateDynamicPadding();
     updateStageHeight();
-
     panX = 0;
     panY = 0;
-
     applyTransform();
     return;
   }
 
-  let zoom = 1;
-
   const labels = hasVisibleLabels();
-
   const wrapperW = wrapper.clientWidth || 1;
   const wrapperH = wrapper.clientHeight || EMPTY_CANVAS_HEIGHT;
+  const maxHeight = getMaxBuildingHeight();
+  const unscaledStageW = stage.scrollWidth || 1;
 
-  // Iterative fitting accounts for dynamic padding,
-  // which changes depending on the zoom level.
+  let zoom = 1;
 
-  for (let i = 0; i < 8; i++) {
-
+  // Bezpieczna pętla obliczeniowa z optymalizacją matematyczną wysokości (brak layout thrashingu)
+  for (let i = 0; i < 6; i++) {
     currentZoom = zoom;
-
-    updateDynamicPadding();
-    updateBuildingUI();
-    updateStageHeight();
-    updateDimensionsCache();
 
     const horizontalPadding = labels ? 170 : 65;
 
     const widthFit = Math.max(
       0.001,
       (wrapperW - horizontalPadding) /
-      Math.max(
-        1,
-        stageDim.stageW - horizontalPadding / zoom
-      )
+      Math.max(1, unscaledStageW - horizontalPadding / zoom)
     );
 
-    // Compact preview uses width-based fitting.
-    // Height follows the actual building comparison.
+    // Matematyczna kalkulacja wysokości sceny dla danej próby zoomu
+    let calculatedStageH;
+    if (!labels && !isFullscreen) {
+      calculatedStageH = maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER;
+    } else if (labels) {
+      calculatedStageH = maxHeight + (LABEL_TOP_SPACE / zoom) + STAGE_BORDER;
+    } else {
+      calculatedStageH = stage.offsetHeight || EMPTY_CANVAS_HEIGHT;
+    }
 
     const heightFit = (labels || isFullscreen)
-      ? wrapperH / Math.max(1, stageDim.stageH)
+      ? wrapperH / Math.max(1, calculatedStageH)
       : Infinity;
 
-    const next = Math.min(
-      1,
-      widthFit,
-      heightFit
-    );
+    const next = Math.min(1, widthFit, heightFit);
 
     if (!Number.isFinite(next) || next <= 0) {
       break;
@@ -379,13 +344,11 @@ function fitToStage() {
 
   currentZoom = zoom;
 
+  // Finalne jednorazowe zastosowanie stylów DOM po obliczeniu zoomu
   updateDynamicPadding();
   updateBuildingUI();
   updateStageHeight();
   updateDimensionsCache();
-
-  // Normal preview without labels:
-  // Container height follows the scaled canvas.
 
   if (!isFullscreen && !labels) {
     wrapper.style.height =
@@ -393,9 +356,8 @@ function fitToStage() {
   }
 
   panX = 0;
-
   panY = isFullscreen
-    ? stageDim.wrapperH - stageDim.stageH * currentZoom
+    ? wrapperH - stageDim.stageH * currentZoom
     : 0;
 
   applyTransform();
