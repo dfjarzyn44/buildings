@@ -54,32 +54,27 @@
     </div>
   </div>
 
+  <!-- Płótno (Canvas Wrapper) - czyste, nienaruszone -->
   <div class="stage-wrapper" id="stageWrapper">
     <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
-    <div id="stage" class="hide-names hide-height hide-years">
+    <div id="stage">
       <div id="gridOverlay" class="grid-overlay"></div>
-      
-      <!-- Obszar roboczy płótna -->
-      <div id="canvasContent">
-        <div id="buildingsArea"></div>
-        
-        <!-- Dolny panel informacyjny (zastąpienie tabeli HTML czystym CSS/JS) -->
-        <div id="infoTableArea">
-          <div class="info-row row-names">
-            <div class="info-label">Name</div>
-            <div class="info-cells" id="rowNamesCells"></div>
-          </div>
-          <div class="info-row row-height">
-            <div class="info-label">Height</div>
-            <div class="info-cells" id="rowHeightCells"></div>
-          </div>
-          <div class="info-row row-years">
-            <div class="info-label">Year</div>
-            <div class="info-cells" id="rowYearsCells"></div>
-          </div>
-        </div>
-      </div>
+    </div>
+  </div>
 
+  <!-- Zewnętrzna tabela jako osobny prostokąt pod płótnem -->
+  <div id="externalTableContainer" class="external-table-container hidden">
+    <div class="ext-row" id="rowNames">
+      <div class="ext-label">Name</div>
+      <div class="ext-cells" id="cellsNames"></div>
+    </div>
+    <div class="ext-row" id="rowHeight">
+      <div class="ext-label">Height</div>
+      <div class="ext-cells" id="cellsHeight"></div>
+    </div>
+    <div class="ext-row" id="rowYears">
+      <div class="ext-label">Year</div>
+      <div class="ext-cells" id="cellsYears"></div>
     </div>
   </div>
 
