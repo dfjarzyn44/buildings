@@ -60,17 +60,24 @@ function getMaxBuildingHeight() {
 }
 
 
-/* DYNAMIC PADDING (STABLE) */
+/* DYNAMIC PADDING */
 
 function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
 
   const labels = hasVisibleLabels();
+  const zoom = Math.max(currentZoom, 0.001);
 
-  // Stabilne paddingi bez dzielenia przez zoom, dzięki czemu scrollWidth nie wariuje
-  stage.style.paddingLeft = labels ? '80px' : '55px';
-  stage.style.paddingRight = labels ? '90px' : '10px';
+  // Przywrócono skalowanie marginesów przez zoom, aby cyfry siatki nie nachodziły na budynki
+  const leftPadding = labels ? 100 : 70;
+  const rightPadding = labels ? 90 : 30;
+
+  stage.style.paddingLeft =
+    `${Math.round(leftPadding / zoom)}px`;
+
+  stage.style.paddingRight =
+    `${Math.round(rightPadding / zoom)}px`;
 }
 
 
@@ -185,8 +192,13 @@ function updateStageHeight() {
 
   if (!count || !maxHeight) {
     stage.style.height = EMPTY_CANVAS_HEIGHT + 'px';
-  } else {
+  } else if (!hasVisibleLabels()) {
     const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
+    stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
+  } else {
+    // Uwzględnienie przestrzeni na dymki w wysokości płótna
+    const zoom = Math.max(currentZoom, 0.001);
+    const targetHeight = maxHeight + (LABEL_TOP_SPACE / zoom);
     stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
@@ -269,12 +281,9 @@ function fitToStage() {
   const wrapper = document.getElementById('stageWrapper');
   const items = stage.querySelectorAll('.building-item');
 
-  if (!isFullscreen) {
-    wrapper.style.height = EMPTY_CANVAS_HEIGHT + 'px';
-  }
-
   if (!items.length) {
     currentZoom = 1;
+    if (!isFullscreen) wrapper.style.height = EMPTY_CANVAS_HEIGHT + 'px';
     updateDynamicPadding();
     updateStageHeight();
     panX = 0;
@@ -288,23 +297,35 @@ function fitToStage() {
   const wrapperH = wrapper.clientHeight || (isFullscreen ? window.innerHeight : EMPTY_CANVAS_HEIGHT);
   const maxHeight = getMaxBuildingHeight();
 
-  updateDynamicPadding();
-  updateStageHeight();
-  updateDimensionsCache();
-
-  const unscaledStageW = stage.scrollWidth || 1;
-
-  // Stabilne dopasowanie szerokości oparte na stabilnym scrollWidth
-  const widthFit = Math.max(0.001, wrapperW / unscaledStageW);
-
   let zoom = 1;
-  if (!labels && !isFullscreen) {
-    const heightFit = wrapperH / Math.max(1, maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER);
-    zoom = Math.min(1, widthFit, heightFit);
-  } else {
-    const heightAvailable = wrapperH - LABEL_TOP_SPACE - STAGE_BORDER;
-    const heightFit = maxHeight > 0 ? Math.max(0.05, heightAvailable / maxHeight) : 1;
-    zoom = Math.min(1, widthFit, heightFit);
+
+  for (let i = 0; i < 6; i++) {
+    currentZoom = zoom;
+
+    updateDynamicPadding();
+    updateStageHeight();
+    updateDimensionsCache();
+
+    const horizontalPadding = labels ? 190 : 100;
+    const widthFit = Math.max(
+      0.001,
+      (wrapperW - horizontalPadding) /
+      Math.max(1, stageDim.stageW - horizontalPadding / zoom)
+    );
+
+    const heightFit = (labels || isFullscreen)
+      ? wrapperH / Math.max(1, stageDim.stageH)
+      : Infinity;
+
+    const next = Math.min(1, widthFit, heightFit);
+
+    if (!Number.isFinite(next) || next <= 0) break;
+
+    if (Math.abs(next - zoom) < 0.0001) {
+      zoom = next;
+      break;
+    }
+    zoom = next;
   }
 
   currentZoom = Math.max(0.05, Math.min(5, zoom));
@@ -313,11 +334,9 @@ function fitToStage() {
   updateStageHeight();
   updateDimensionsCache();
 
-  if (!isFullscreen && !labels) {
-    wrapper.style.height =
-      Math.ceil(stageDim.stageH * currentZoom) + 'px';
-  } else if (!isFullscreen && labels) {
-    wrapper.style.height = EMPTY_CANVAS_HEIGHT + 'px';
+  if (!isFullscreen) {
+    // Kontener automatycznie dopasowuje się do wysokości płótna (wraz z zapasem na etykiety)
+    wrapper.style.height = Math.max(EMPTY_CANVAS_HEIGHT, Math.ceil(stageDim.stageH * currentZoom)) + 'px';
   }
 
   panX = 0;
