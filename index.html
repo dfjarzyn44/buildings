@@ -1,20 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Building Size Comparison</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>Building Size Comparison</h1>
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Search by building, city or country...">
+  </div>
+  <div class="grid" id="buildingsGrid"></div>
+
+  <div class="stage-section">
+    <h2>Comparison Area</h2>
+    
+    <div class="stage-controls">
+      <!-- Rząd 1: Przyciski akcji -->
+      <div class="controls-row">
+        <button class="btn-action" id="toggleFsBtn" onclick="toggleFullscreen()">Open Interactive Canvas</button>
+        <button class="btn-reset" onclick="clearStage()">Clear</button>
+      </div>
+
+      <!-- Rząd 2: Trzy znaczniki w jednym rzędzie -->
+      <div class="controls-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="showNamesCheckbox"> Names
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="showHeightCheckbox"> Height
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="showYearsCheckbox"> Years built
+        </label>
+      </div>
+
+      <!-- Rząd 3: Siatka + Jednostki -->
+      <div class="controls-row">
+        <label class="toggle-label">
+          <input type="checkbox" id="showGridCheckbox"> Grid:
+        </label>
+        <div class="unit-selector disabled" id="unitSelector">
+          <label class="radio-label">
+            <input type="radio" name="gridUnit" value="metric" checked disabled> Metric (m)
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="gridUnit" value="imperial" disabled> Imperial (ft)
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="stage-wrapper" id="stageWrapper">
     <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
     <div id="stage" class="hide-names hide-height hide-years">
       <div id="gridOverlay" class="grid-overlay"></div>
-      <div id="buildingsArea"></div>
-      <div id="tableContainer">
-        <table id="comparisonTable">
-          <tr class="row-name">
-            <td class="table-header-col">Name</td>
-          </tr>
-          <tr class="row-height">
-            <td class="table-header-col">Height</td>
-          </tr>
-          <tr class="row-year">
-            <td class="table-header-col">Year</td>
-          </tr>
-        </table>
+      
+      <!-- Obszar roboczy płótna -->
+      <div id="canvasContent">
+        <div id="buildingsArea"></div>
+        
+        <!-- Dolny panel informacyjny (zastąpienie tabeli HTML czystym CSS/JS) -->
+        <div id="infoTableArea">
+          <div class="info-row row-names">
+            <div class="info-label">Name</div>
+            <div class="info-cells" id="rowNamesCells"></div>
+          </div>
+          <div class="info-row row-height">
+            <div class="info-label">Height</div>
+            <div class="info-cells" id="rowHeightCells"></div>
+          </div>
+          <div class="info-row row-years">
+            <div class="info-label">Year</div>
+            <div class="info-cells" id="rowYearsCells"></div>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
