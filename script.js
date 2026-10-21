@@ -60,23 +60,17 @@ function getMaxBuildingHeight() {
 }
 
 
-/* DYNAMIC PADDING */
+/* DYNAMIC PADDING (STABLE) */
 
 function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
 
   const labels = hasVisibleLabels();
-  const zoom = Math.max(currentZoom, 0.001);
 
-  const leftPadding = labels ? 80 : 55;
-  const rightPadding = labels ? 90 : 10;
-
-  stage.style.paddingLeft =
-    `${Math.round(leftPadding / zoom)}px`;
-
-  stage.style.paddingRight =
-    `${Math.round(rightPadding / zoom)}px`;
+  // Stabilne paddingi bez dzielenia przez zoom, dzięki czemu scrollWidth nie wariuje
+  stage.style.paddingLeft = labels ? '80px' : '55px';
+  stage.style.paddingRight = labels ? '90px' : '10px';
 }
 
 
@@ -129,7 +123,7 @@ function updateBuildingUI() {
   );
 
   const maxHeight = getMaxBuildingHeight();
-  const zoomedIn = currentZoom > 1.2;
+  const labelsActive = hasVisibleLabels();
 
   items.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
@@ -143,14 +137,13 @@ function updateBuildingUI() {
     item.style.marginLeft = `${halfMargin}px`;
     item.style.marginRight = `${halfMargin}px`;
 
-    let rowOffsetScreen = 30;
-
-    if (!zoomedIn && items.length > 1) {
-      rowOffsetScreen = [30, 105, 180][index % 3];
+    let rowOffsetScreen = 0;
+    if (items.length > 1 && labelsActive) {
+      rowOffsetScreen = [0, 65, 130][index % 3];
     }
 
-    const totalShift =
-      maxHeight - height + rowOffsetScreen * inverseScale;
+    const rowOffsetUnscaled = rowOffsetScreen / Math.max(currentZoom, 0.001);
+    const totalShift = maxHeight - height + rowOffsetUnscaled;
 
     ui.style.transform =
       `scale(${inverseScale}) translateY(${-totalShift * currentZoom}px)`;
@@ -192,12 +185,8 @@ function updateStageHeight() {
 
   if (!count || !maxHeight) {
     stage.style.height = EMPTY_CANVAS_HEIGHT + 'px';
-  } else if (!hasVisibleLabels()) {
-    const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
-    stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   } else {
-    const zoom = Math.max(currentZoom, 0.001);
-    const targetHeight = maxHeight + (LABEL_TOP_SPACE / zoom);
+    const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
     stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
@@ -298,26 +287,24 @@ function fitToStage() {
   const wrapperW = wrapper.clientWidth || 1;
   const wrapperH = wrapper.clientHeight || (isFullscreen ? window.innerHeight : EMPTY_CANVAS_HEIGHT);
   const maxHeight = getMaxBuildingHeight();
+
+  updateDynamicPadding();
+  updateStageHeight();
+  updateDimensionsCache();
+
   const unscaledStageW = stage.scrollWidth || 1;
 
+  // Stabilne dopasowanie szerokości oparte na stabilnym scrollWidth
+  const widthFit = Math.max(0.001, wrapperW / unscaledStageW);
+
   let zoom = 1;
-
   if (!labels && !isFullscreen) {
-    const horizontalPadding = 65;
-    const widthFit = Math.max(0.001, (wrapperW - horizontalPadding) / Math.max(1, unscaledStageW - horizontalPadding));
-    zoom = Math.min(1, widthFit);
+    const heightFit = wrapperH / Math.max(1, maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER);
+    zoom = Math.min(1, widthFit, heightFit);
   } else {
-    const horizontalPadding = labels ? 170 : 65;
-    const widthFit = Math.max(0.001, (wrapperW - horizontalPadding) / Math.max(1, unscaledStageW));
-
-    if (labels) {
-      const heightAvailable = wrapperH - LABEL_TOP_SPACE - STAGE_BORDER;
-      const heightFit = maxHeight > 0 ? Math.max(0.05, heightAvailable / maxHeight) : 1;
-      zoom = Math.min(1, widthFit, heightFit);
-    } else {
-      const heightFit = wrapperH / Math.max(1, maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER);
-      zoom = Math.min(1, widthFit, heightFit);
-    }
+    const heightAvailable = wrapperH - LABEL_TOP_SPACE - STAGE_BORDER;
+    const heightFit = maxHeight > 0 ? Math.max(0.05, heightAvailable / maxHeight) : 1;
+    zoom = Math.min(1, widthFit, heightFit);
   }
 
   currentZoom = Math.max(0.05, Math.min(5, zoom));
