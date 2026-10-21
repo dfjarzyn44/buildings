@@ -1,7 +1,7 @@
 const PIXELS_PER_METER = 10;
 const MIN_SCREEN_PADDING = 55;
 
-const CANVAS_TOP_MARGIN = 0.20;
+const CANVAS_TOP_MARGIN = 0.20; // Przywrócony 20% margines nad najwyższym budynkiem
 const EMPTY_CANVAS_HEIGHT = 450;
 const STAGE_BORDER = 12;
 
@@ -46,7 +46,7 @@ function getBuildingHeight(img) {
 
 function getMaxBuildingHeight() {
   const images = Array.from(
-    document.querySelectorAll('#buildingsArea .building-item img')
+    document.querySelectorAll('#stage .building-item img')
   );
   return Math.max(0, ...images.map(getBuildingHeight));
 }
@@ -58,11 +58,9 @@ function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
 
-  const labels = hasVisibleLabels();
   const zoom = Math.max(currentZoom, 0.001);
-
-  const leftPadding = labels ? 80 : 55;
-  const rightPadding = labels ? 90 : 10;
+  const leftPadding = 80;
+  const rightPadding = 50;
 
   stage.style.paddingLeft = `${Math.round(leftPadding / zoom)}px`;
   stage.style.paddingRight = `${Math.round(rightPadding / zoom)}px`;
@@ -100,7 +98,7 @@ function updateDimensionsCache() {
 }
 
 
-/* BUILDING UI & INFO TABLE SYNC */
+/* BUILDING UI & EXTERNAL TABLE SYNC */
 
 function updateBuildingUI() {
   const inverseScale = 1 / Math.max(currentZoom, 0.001);
@@ -110,19 +108,10 @@ function updateBuildingUI() {
   });
 
   const items = Array.from(
-    document.querySelectorAll('#buildingsArea .building-item')
+    document.querySelectorAll('#stage .building-item')
   );
 
-  const rowNamesCells = document.getElementById('rowNamesCells');
-  const rowHeightCells = document.getElementById('rowHeightCells');
-  const rowYearsCells = document.getElementById('rowYearsCells');
-
-  if (rowNamesCells) rowNamesCells.innerHTML = '';
-  if (rowHeightCells) rowHeightCells.innerHTML = '';
-  if (rowYearsCells) rowYearsCells.innerHTML = '';
-
-  const maxHeight = getMaxBuildingHeight();
-
+  // Ustawienie marginesów budynków na płótnie
   items.forEach((item) => {
     const img = item.querySelector('img');
     if (!img) return;
@@ -130,49 +119,74 @@ function updateBuildingUI() {
     const height = getBuildingHeight(img);
     const halfMargin = Math.round((height * 0.15) / 2);
     
-    // Ustawienie marginesów dla budynku na płótnie
     item.style.marginLeft = `${halfMargin}px`;
     item.style.marginRight = `${halfMargin}px`;
-
-    const imgWidth = img.offsetWidth || 50;
-
-    // Generowanie komórek tabeli informacyjnej z zachowaniem dokładnie tych samych marginesów
-    if (rowNamesCells) {
-      const cell = document.createElement('div');
-      cell.className = 'info-cell';
-      cell.style.width = `${imgWidth}px`;
-      cell.style.marginLeft = `${halfMargin}px`;
-      cell.style.marginRight = `${halfMargin}px`;
-      cell.textContent = item.dataset.buildingName || '';
-      rowNamesCells.appendChild(cell);
-    }
-
-    if (rowHeightCells) {
-      const cell = document.createElement('div');
-      cell.className = 'info-cell';
-      cell.style.width = `${imgWidth}px`;
-      cell.style.marginLeft = `${halfMargin}px`;
-      cell.style.marginRight = `${halfMargin}px`;
-      cell.textContent = item.dataset.buildingHeightStr || '';
-      rowHeightCells.appendChild(cell);
-    }
-
-    if (rowYearsCells) {
-      const cell = document.createElement('div');
-      cell.className = 'info-cell';
-      cell.style.width = `${imgWidth}px`;
-      cell.style.marginLeft = `${halfMargin}px`;
-      cell.style.marginRight = `${halfMargin}px`;
-      cell.textContent = item.dataset.buildingYear || '';
-      rowYearsCells.appendChild(cell);
-    }
   });
 
-  // Skalowanie dolnego panelu pod kątem zoomu
-  const infoArea = document.getElementById('infoTableArea');
-  if (infoArea) {
-    infoArea.style.transform = `scale(${inverseScale})`;
+  // Aktualizacja tabeli pod płótnem
+  updateExternalTable();
+}
+
+function updateExternalTable() {
+  const container = document.getElementById('externalTableContainer');
+  if (!container) return;
+
+  const namesCells = document.getElementById('cellsNames');
+  const heightCells = document.getElementById('cellsHeight');
+  const yearsCells = document.getElementById('cellsYears');
+
+  if (namesCells) namesCells.innerHTML = '';
+  if (heightCells) heightCells.innerHTML = '';
+  if (yearsCells) yearsCells.innerHTML = '';
+
+  const items = Array.from(
+    document.querySelectorAll('#stage .building-item')
+  );
+
+  if (items.length === 0 || !hasVisibleLabels()) {
+    container.classList.add('hidden');
+    return;
   }
+
+  container.classList.remove('hidden');
+
+  container.classList.toggle('hide-names', !document.getElementById('showNamesCheckbox')?.checked);
+  container.classList.toggle('hide-height', !document.getElementById('showHeightCheckbox')?.checked);
+  container.classList.toggle('hide-years', !document.getElementById('showYearsCheckbox')?.checked);
+
+  items.forEach(item => {
+    const img = item.querySelector('img');
+    if (!img) return;
+
+    const height = getBuildingHeight(img);
+    const halfMargin = Math.round((height * 0.15) / 2);
+    const imgWidth = img.offsetWidth || 50;
+    const totalWidth = imgWidth + (halfMargin * 2);
+
+    if (namesCells) {
+      const cell = document.createElement('div');
+      cell.className = 'ext-cell';
+      cell.style.width = `${totalWidth}px`;
+      cell.textContent = item.dataset.buildingName || '';
+      namesCells.appendChild(cell);
+    }
+
+    if (heightCells) {
+      const cell = document.createElement('div');
+      cell.className = 'ext-cell';
+      cell.style.width = `${totalWidth}px`;
+      cell.textContent = item.dataset.buildingHeightStr || '';
+      heightCells.appendChild(cell);
+    }
+
+    if (yearsCells) {
+      const cell = document.createElement('div');
+      cell.className = 'ext-cell';
+      cell.style.width = `${totalWidth}px`;
+      cell.textContent = item.dataset.buildingYear || '';
+      yearsCells.appendChild(cell);
+    }
+  });
 }
 
 
@@ -199,26 +213,18 @@ function toggleFullscreen() {
 }
 
 
-/* AUTOMATIC CANVAS HEIGHT */
+/* AUTOMATIC CANVAS HEIGHT (Z PRZYWRÓCONYM MARGINESEM U GÓRY) */
 
 function updateStageHeight() {
   const stage = document.getElementById('stage');
   const maxHeight = getMaxBuildingHeight();
   const count = stage.querySelectorAll('.building-item').length;
-  const infoArea = document.getElementById('infoTableArea');
-  const labels = hasVisibleLabels();
 
   if (!count || !maxHeight) {
     stage.style.height = EMPTY_CANVAS_HEIGHT + 'px';
   } else {
-    // Uwzględnienie wysokości panelu informacyjnego jeśli etykiety są włączone
-    let infoHeight = 0;
-    if (labels && infoArea) {
-      const inverseScale = 1 / Math.max(currentZoom, 0.001);
-      infoHeight = (infoArea.offsetHeight || 80) * inverseScale;
-    }
-
-    const targetHeight = maxHeight + infoHeight + (labels ? 40 : 0);
+    // Najwyższy budynek + 20% przestrzeni u góry płótna
+    const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
     stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
@@ -296,7 +302,6 @@ function fitToStage() {
   }
 
   let zoom = 1;
-  const labels = hasVisibleLabels();
   const wrapperW = wrapper.clientWidth || 1;
   const wrapperH = wrapper.clientHeight || EMPTY_CANVAS_HEIGHT;
 
@@ -307,7 +312,7 @@ function fitToStage() {
     updateStageHeight();
     updateDimensionsCache();
 
-    const horizontalPadding = labels ? 170 : 65;
+    const horizontalPadding = 100;
 
     const widthFit = Math.max(
       0.001,
@@ -315,7 +320,7 @@ function fitToStage() {
       Math.max(1, stageDim.stageW - horizontalPadding / zoom)
     );
 
-    const heightFit = (labels || isFullscreen)
+    const heightFit = isFullscreen
       ? wrapperH / Math.max(1, stageDim.stageH)
       : Infinity;
 
@@ -336,7 +341,7 @@ function fitToStage() {
   updateStageHeight();
   updateDimensionsCache();
 
-  if (!isFullscreen && !labels) {
+  if (!isFullscreen) {
     wrapper.style.height = Math.ceil(stageDim.stageH * currentZoom) + 'px';
   }
 
@@ -350,23 +355,18 @@ function fitToStage() {
 /* USER INTERACTIONS */
 
 function initInteractions() {
-  const stage = document.getElementById('stage');
-
   const labelControls = [
-    ['showNamesCheckbox', 'hide-names'],
-    ['showHeightCheckbox', 'hide-height'],
-    ['showYearsCheckbox', 'hide-years']
+    'showNamesCheckbox',
+    'showHeightCheckbox',
+    'showYearsCheckbox'
   ];
 
-  labelControls.forEach(([id, cls]) => {
+  labelControls.forEach(id => {
     const checkbox = document.getElementById(id);
     if (!checkbox) return;
 
-    stage.classList.toggle(cls, !checkbox.checked);
-
     checkbox.addEventListener('change', () => {
-      stage.classList.toggle(cls, !checkbox.checked);
-      fitToStage();
+      updateExternalTable();
     });
   });
 
@@ -507,7 +507,7 @@ function toggleGridControls() {
 /* CLEAR CANVAS */
 
 function clearStage() {
-  document.querySelectorAll('#buildingsArea .building-item').forEach(item => item.remove());
+  document.querySelectorAll('#stage .building-item').forEach(item => item.remove());
   addedBuildings.clear();
   filterData();
   fitToStage();
@@ -518,7 +518,7 @@ function clearStage() {
 
 function removeBuilding(name) {
   addedBuildings.delete(name);
-  document.querySelectorAll('#buildingsArea .building-item').forEach(item => {
+  document.querySelectorAll('#stage .building-item').forEach(item => {
     if (item.dataset.name === name) {
       item.remove();
     }
@@ -534,7 +534,7 @@ function addToStage(building) {
   if (addedBuildings.has(building.name)) return;
   addedBuildings.add(building.name);
 
-  const area = document.getElementById('buildingsArea');
+  const stage = document.getElementById('stage');
   const item = document.createElement('div');
   
   item.className = 'building-item';
@@ -563,7 +563,7 @@ function addToStage(building) {
   img.dataset.scale = String(Number.isFinite(scale) && scale > 0 ? scale : 1);
 
   item.appendChild(img);
-  area.appendChild(item);
+  stage.appendChild(item);
 
   const ready = () => {
     img.style.height = `${img.naturalHeight * Number(img.dataset.scale)}px`;
