@@ -197,7 +197,7 @@ function updateStageHeight() {
     stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   } else {
     const zoom = Math.max(currentZoom, 0.001);
-    const targetHeight = maxHeight + LABEL_TOP_SPACE / zoom;
+    const targetHeight = maxHeight + (LABEL_TOP_SPACE / zoom);
     stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
@@ -296,63 +296,41 @@ function fitToStage() {
 
   const labels = hasVisibleLabels();
   const wrapperW = wrapper.clientWidth || 1;
-  const wrapperH = wrapper.clientHeight || EMPTY_CANVAS_HEIGHT;
+  const wrapperH = wrapper.clientHeight || (isFullscreen ? window.innerHeight : EMPTY_CANVAS_HEIGHT);
   const maxHeight = getMaxBuildingHeight();
   const unscaledStageW = stage.scrollWidth || 1;
 
   let zoom = 1;
 
-  // Bezpieczna pętla obliczeniowa z optymalizacją matematyczną wysokości (brak layout thrashingu)
-  for (let i = 0; i < 6; i++) {
-    currentZoom = zoom;
-
+  if (!labels && !isFullscreen) {
+    const horizontalPadding = 65;
+    const widthFit = Math.max(0.001, (wrapperW - horizontalPadding) / Math.max(1, unscaledStageW - horizontalPadding));
+    zoom = Math.min(1, widthFit);
+  } else {
     const horizontalPadding = labels ? 170 : 65;
+    const widthFit = Math.max(0.001, (wrapperW - horizontalPadding) / Math.max(1, unscaledStageW));
 
-    const widthFit = Math.max(
-      0.001,
-      (wrapperW - horizontalPadding) /
-      Math.max(1, unscaledStageW - horizontalPadding / zoom)
-    );
-
-    // Matematyczna kalkulacja wysokości sceny dla danej próby zoomu
-    let calculatedStageH;
-    if (!labels && !isFullscreen) {
-      calculatedStageH = maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER;
-    } else if (labels) {
-      calculatedStageH = maxHeight + (LABEL_TOP_SPACE / zoom) + STAGE_BORDER;
+    if (labels) {
+      const heightAvailable = wrapperH - LABEL_TOP_SPACE - STAGE_BORDER;
+      const heightFit = maxHeight > 0 ? Math.max(0.05, heightAvailable / maxHeight) : 1;
+      zoom = Math.min(1, widthFit, heightFit);
     } else {
-      calculatedStageH = stage.offsetHeight || EMPTY_CANVAS_HEIGHT;
+      const heightFit = wrapperH / Math.max(1, maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER);
+      zoom = Math.min(1, widthFit, heightFit);
     }
-
-    const heightFit = (labels || isFullscreen)
-      ? wrapperH / Math.max(1, calculatedStageH)
-      : Infinity;
-
-    const next = Math.min(1, widthFit, heightFit);
-
-    if (!Number.isFinite(next) || next <= 0) {
-      break;
-    }
-
-    if (Math.abs(next - zoom) < 0.0001) {
-      zoom = next;
-      break;
-    }
-
-    zoom = next;
   }
 
-  currentZoom = zoom;
+  currentZoom = Math.max(0.05, Math.min(5, zoom));
 
-  // Finalne jednorazowe zastosowanie stylów DOM po obliczeniu zoomu
   updateDynamicPadding();
-  updateBuildingUI();
   updateStageHeight();
   updateDimensionsCache();
 
   if (!isFullscreen && !labels) {
     wrapper.style.height =
       Math.ceil(stageDim.stageH * currentZoom) + 'px';
+  } else if (!isFullscreen && labels) {
+    wrapper.style.height = EMPTY_CANVAS_HEIGHT + 'px';
   }
 
   panX = 0;
