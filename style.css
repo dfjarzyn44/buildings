@@ -249,8 +249,7 @@ select {
 
 #stage {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: flex-start;
   padding: 0 30px 0 80px;
   box-sizing: border-box;
@@ -263,19 +262,6 @@ select {
   left: 0;
   border-bottom: 12px solid #57ab59;
   overflow: visible;
-}
-
-#canvasContent {
-  display: flex;
-  flex-direction: column;
-  width: max-content;
-}
-
-#buildingsArea {
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  width: max-content;
 }
 
 /* BUILDING ITEM */
@@ -299,24 +285,34 @@ select {
   padding: 0;
 }
 
-/* DOLNY PANEL INFORMACYJNY (CSS-BASED TABLE) */
+/* ZEWNĘTRZNA TABELA INFORMACYJNA (POD PŁÓTNEM) */
 
-#infoTableArea {
+.external-table-container {
   margin-top: 15px;
-  display: flex;
-  flex-direction: column;
-  width: max-content;
   background: #fff;
-  transform-origin: top left;
-  transition: transform 0.1s ease-out;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px;
+  overflow-x: auto;
+  box-sizing: border-box;
+  width: 100%;
 }
 
-.info-row {
+.external-table-container.hidden {
+  display: none;
+}
+
+.ext-row {
   display: flex;
   align-items: center;
+  border-bottom: 1px solid #eee;
 }
 
-.info-label {
+.ext-row:last-child {
+  border-bottom: none;
+}
+
+.ext-label {
   width: 75px;
   min-width: 75px;
   font-weight: bold;
@@ -324,37 +320,34 @@ select {
   border: 1px solid #ccc;
   padding: 6px 8px;
   font-size: 11px;
-  text-align: left;
   box-sizing: border-box;
+  text-align: left;
+  flex-shrink: 0;
 }
 
-.info-cells {
+.ext-cells {
   display: flex;
   align-items: center;
 }
 
-.info-cell {
+.ext-cell {
   border: 1px solid #ccc;
   padding: 6px 8px;
   text-align: center;
-  vertical-align: middle;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 11px;
   background: #fff;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
-/* VISIBILITY / ZWIJANIE */
+/* UKRYWANIE WIERSZY W ZALEŻNOŚCI OD CHECKBOXÓW */
 
-#stage.hide-names .row-names,
-#stage.hide-height .row-height,
-#stage.hide-years .row-years {
-  display: none;
-}
-
-#stage.hide-names.hide-height.hide-years #infoTableArea {
+.external-table-container.hide-names #rowNames,
+.external-table-container.hide-height #rowHeight,
+.external-table-container.hide-years #rowYears {
   display: none;
 }
 
@@ -393,7 +386,6 @@ select {
   font-weight: bold;
   transform-origin: left center !important;
   white-space: nowrap;
-  z-index: 5;
 }
 
 /* MOBILE */
