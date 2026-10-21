@@ -1,4 +1,3 @@
-
 const PIXELS_PER_METER = 10;
 const MIN_SCREEN_PADDING = 55;
 
@@ -140,8 +139,9 @@ function updateBuildingUI() {
 
     const height = getBuildingHeight(img);
 
-    item.style.marginRight =
-      `${Math.round(height * 0.15)}px`;
+    const halfMargin = Math.round((height * 0.15) / 2);
+    item.style.marginLeft = `${halfMargin}px`;
+    item.style.marginRight = `${halfMargin}px`;
 
     let rowOffsetScreen = 30;
 
