@@ -24,7 +24,7 @@
         <button class="btn-reset" onclick="clearStage()">Clear</button>
       </div>
 
-      <!-- Rząd 2: Trzy znaczniki w jednym rzędzie -->
+      <!-- Rząd 2: Trzy znaczniki w jednym rzędzie (domyślnie odznaczone) -->
       <div class="controls-row">
         <label class="toggle-label">
           <input type="checkbox" id="showNamesCheckbox"> Names
@@ -37,7 +37,7 @@
         </label>
       </div>
 
-      <!-- Rząd 3: Siatka + Jednostki -->
+      <!-- Rząd 3: Siatka + Jednostki w jednym rzędzie -->
       <div class="controls-row">
         <label class="toggle-label">
           <input type="checkbox" id="showGridCheckbox"> Grid:
@@ -54,27 +54,10 @@
     </div>
   </div>
 
-  <!-- Płótno (Canvas Wrapper) -->
   <div class="stage-wrapper" id="stageWrapper">
     <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
-    <div id="stage">
+    <div id="stage" class="hide-names hide-height hide-years">
       <div id="gridOverlay" class="grid-overlay"></div>
-    </div>
-  </div>
-
-  <!-- Zewnętrzna tabela przylegająca bezpośrednio pod płótnem -->
-  <div id="externalTableContainer" class="external-table-container hidden">
-    <div class="ext-row" id="rowNames">
-      <div class="ext-label">Name</div>
-      <div class="ext-cells" id="cellsNames"></div>
-    </div>
-    <div class="ext-row" id="rowHeight">
-      <div class="ext-label">Height</div>
-      <div class="ext-cells" id="cellsHeight"></div>
-    </div>
-    <div class="ext-row" id="rowYears">
-      <div class="ext-label">Year</div>
-      <div class="ext-cells" id="cellsYears"></div>
     </div>
   </div>
 
