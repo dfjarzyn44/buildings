@@ -60,17 +60,23 @@ function getMaxBuildingHeight() {
 }
 
 
-/* DYNAMIC PADDING (STABLE) */
+/* DYNAMIC PADDING */
 
 function updateDynamicPadding() {
   const stage = document.getElementById('stage');
   if (!stage) return;
 
   const labels = hasVisibleLabels();
+  const zoom = Math.max(currentZoom, 0.001);
 
-  // Ustawiamy stały padding, aby scrollWidth nie wariował
-  stage.style.paddingLeft = labels ? '80px' : '55px';
-  stage.style.paddingRight = labels ? '90px' : '10px';
+  const leftPadding = labels ? 80 : 55;
+  const rightPadding = labels ? 90 : 10;
+
+  stage.style.paddingLeft =
+    `${Math.round(leftPadding / zoom)}px`;
+
+  stage.style.paddingRight =
+    `${Math.round(rightPadding / zoom)}px`;
 }
 
 
@@ -123,7 +129,7 @@ function updateBuildingUI() {
   );
 
   const maxHeight = getMaxBuildingHeight();
-  const labelsActive = hasVisibleLabels();
+  const zoomedIn = currentZoom > 1.2;
 
   items.forEach((item, index) => {
     const ui = item.querySelector('.building-ui');
@@ -137,13 +143,14 @@ function updateBuildingUI() {
     item.style.marginLeft = `${halfMargin}px`;
     item.style.marginRight = `${halfMargin}px`;
 
-    let rowOffsetScreen = 0;
-    if (items.length > 1 && labelsActive) {
-      rowOffsetScreen = [0, 65, 130][index % 3];
+    let rowOffsetScreen = 30;
+
+    if (!zoomedIn && items.length > 1) {
+      rowOffsetScreen = [30, 105, 180][index % 3];
     }
 
-    const rowOffsetUnscaled = rowOffsetScreen / Math.max(currentZoom, 0.001);
-    const totalShift = maxHeight - height + rowOffsetUnscaled;
+    const totalShift =
+      maxHeight - height + rowOffsetScreen * inverseScale;
 
     ui.style.transform =
       `scale(${inverseScale}) translateY(${-totalShift * currentZoom}px)`;
@@ -180,14 +187,42 @@ function toggleFullscreen() {
 
 function updateStageHeight() {
   const stage = document.getElementById('stage');
+
   const maxHeight = getMaxBuildingHeight();
-  const count = stage.querySelectorAll('.building-item').length;
+
+  const count = stage.querySelectorAll(
+    '.building-item'
+  ).length;
 
   if (!count || !maxHeight) {
-    stage.style.height = EMPTY_CANVAS_HEIGHT + 'px';
+
+    stage.style.height =
+      EMPTY_CANVAS_HEIGHT + 'px';
+
+  } else if (!hasVisibleLabels()) {
+
+    // No labels:
+    // Tallest building + 20% empty space.
+    // Ground stays at the bottom.
+
+    const targetHeight =
+      maxHeight * (1 + CANVAS_TOP_MARGIN);
+
+    stage.style.height =
+      Math.ceil(targetHeight + STAGE_BORDER) + 'px';
+
   } else {
-    const targetHeight = maxHeight * (1 + CANVAS_TOP_MARGIN);
-    stage.style.height = Math.ceil(targetHeight + STAGE_BORDER) + 'px';
+
+    // Labels enabled:
+    // Preserve additional space for staggered labels.
+
+    const zoom = Math.max(currentZoom, 0.001);
+
+    const targetHeight =
+      maxHeight + LABEL_TOP_SPACE / zoom;
+
+    stage.style.height =
+      Math.ceil(targetHeight + STAGE_BORDER) + 'px';
   }
 
   renderHeightGrid();
@@ -267,6 +302,7 @@ function applyTransform() {
 function fitToStage() {
   const stage = document.getElementById('stage');
   const wrapper = document.getElementById('stageWrapper');
+
   const items = stage.querySelectorAll('.building-item');
 
   if (!isFullscreen) {
@@ -275,54 +311,91 @@ function fitToStage() {
 
   if (!items.length) {
     currentZoom = 1;
+
     updateDynamicPadding();
     updateStageHeight();
+
     panX = 0;
     panY = 0;
+
     applyTransform();
     return;
   }
 
-  const labels = hasVisibleLabels();
-  const wrapperW = wrapper.clientWidth || 1;
-  const wrapperH = wrapper.clientHeight || (isFullscreen ? window.innerHeight : EMPTY_CANVAS_HEIGHT);
-  const maxHeight = getMaxBuildingHeight();
-
-  updateDynamicPadding();
-  updateStageHeight();
-  updateDimensionsCache();
-
-  const unscaledStageW = stage.scrollWidth || 1;
-
-  // Obliczamy zoom na podstawie stabilnego scrollWidth
-  const widthFit = Math.max(0.001, wrapperW / unscaledStageW);
-
   let zoom = 1;
-  if (!labels && !isFullscreen) {
-    const heightFit = wrapperH / Math.max(1, maxHeight * (1 + CANVAS_TOP_MARGIN) + STAGE_BORDER);
-    zoom = Math.min(1, widthFit, heightFit);
-  } else {
-    const heightAvailable = wrapperH - LABEL_TOP_SPACE - STAGE_BORDER;
-    const heightFit = maxHeight > 0 ? Math.max(0.05, heightAvailable / maxHeight) : 1;
-    zoom = Math.min(1, widthFit, heightFit);
+
+  const labels = hasVisibleLabels();
+
+  const wrapperW = wrapper.clientWidth || 1;
+  const wrapperH = wrapper.clientHeight || EMPTY_CANVAS_HEIGHT;
+
+  // Iterative fitting accounts for dynamic padding,
+  // which changes depending on the zoom level.
+
+  for (let i = 0; i < 8; i++) {
+
+    currentZoom = zoom;
+
+    updateDynamicPadding();
+    updateBuildingUI();
+    updateStageHeight();
+    updateDimensionsCache();
+
+    const horizontalPadding = labels ? 170 : 65;
+
+    const widthFit = Math.max(
+      0.001,
+      (wrapperW - horizontalPadding) /
+      Math.max(
+        1,
+        stageDim.stageW - horizontalPadding / zoom
+      )
+    );
+
+    // Compact preview uses width-based fitting.
+    // Height follows the actual building comparison.
+
+    const heightFit = (labels || isFullscreen)
+      ? wrapperH / Math.max(1, stageDim.stageH)
+      : Infinity;
+
+    const next = Math.min(
+      1,
+      widthFit,
+      heightFit
+    );
+
+    if (!Number.isFinite(next) || next <= 0) {
+      break;
+    }
+
+    if (Math.abs(next - zoom) < 0.0001) {
+      zoom = next;
+      break;
+    }
+
+    zoom = next;
   }
 
-  currentZoom = Math.max(0.05, Math.min(5, zoom));
+  currentZoom = zoom;
 
   updateDynamicPadding();
+  updateBuildingUI();
   updateStageHeight();
   updateDimensionsCache();
+
+  // Normal preview without labels:
+  // Container height follows the scaled canvas.
 
   if (!isFullscreen && !labels) {
     wrapper.style.height =
       Math.ceil(stageDim.stageH * currentZoom) + 'px';
-  } else if (!isFullscreen && labels) {
-    wrapper.style.height = EMPTY_CANVAS_HEIGHT + 'px';
   }
 
   panX = 0;
+
   panY = isFullscreen
-    ? wrapperH - stageDim.stageH * currentZoom
+    ? stageDim.wrapperH - stageDim.stageH * currentZoom
     : 0;
 
   applyTransform();
