@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,58 +10,130 @@
 <body>
 
   <h1>Building Size Comparison</h1>
+
   <div class="controls">
-    <input type="text" id="searchInput" placeholder="Search by building, city or country...">
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search by building, city or country..."
+    >
   </div>
+
   <div class="grid" id="buildingsGrid"></div>
 
   <div class="stage-section">
     <h2>Comparison Area</h2>
-    
+
     <div class="stage-controls">
-      <!-- Rząd 1: Przyciski akcji -->
+
       <div class="controls-row">
-        <button class="btn-action" id="toggleFsBtn" onclick="toggleFullscreen()">Open Interactive Canvas</button>
-        <button class="btn-reset" onclick="clearStage()">Clear</button>
+        <button
+          class="btn-action"
+          id="toggleFsBtn"
+          onclick="toggleFullscreen()"
+        >
+          Open Interactive Canvas
+        </button>
+
+        <button
+          class="btn-reset"
+          onclick="clearStage()"
+        >
+          Clear
+        </button>
+
+        <button
+          class="btn-action"
+          id="exportBtn"
+          onclick="exportComparison()"
+        >
+          Download Image
+        </button>
       </div>
 
-      <!-- Rząd 2: Trzy znaczniki w jednym rzędzie (domyślnie odznaczone) -->
       <div class="controls-row">
         <label class="toggle-label">
-          <input type="checkbox" id="showNamesCheckbox"> Names
-        </label>
-        <label class="toggle-label">
-          <input type="checkbox" id="showHeightCheckbox"> Height
-        </label>
-        <label class="toggle-label">
-          <input type="checkbox" id="showYearsCheckbox"> Years built
+          <input type="checkbox" id="showDetailsCheckbox">
+          Show details
         </label>
       </div>
 
-      <!-- Rząd 3: Siatka + Jednostki w jednym rzędzie -->
       <div class="controls-row">
         <label class="toggle-label">
-          <input type="checkbox" id="showGridCheckbox"> Grid:
+          <input type="checkbox" id="showGridCheckbox">
+          Grid:
         </label>
+
         <div class="unit-selector disabled" id="unitSelector">
           <label class="radio-label">
-            <input type="radio" name="gridUnit" value="metric" checked disabled> Metric (m)
+            <input
+              type="radio"
+              name="gridUnit"
+              value="metric"
+              checked
+              disabled
+            >
+            Metric (m)
           </label>
+
           <label class="radio-label">
-            <input type="radio" name="gridUnit" value="imperial" disabled> Imperial (ft)
+            <input
+              type="radio"
+              name="gridUnit"
+              value="imperial"
+              disabled
+            >
+            Imperial (ft)
           </label>
         </div>
       </div>
+
     </div>
   </div>
 
-  <div class="stage-wrapper" id="stageWrapper">
-    <button class="close-fullscreen-btn" onclick="toggleFullscreen()">Close Fullscreen</button>
-    <div id="stage" class="hide-names hide-height hide-years">
-      <div id="gridOverlay" class="grid-overlay"></div>
+  <!--
+    Wspólny obszar eksportu.
+    Płótno i tabela są dwoma niezależnymi elementami.
+  -->
+  <div id="capture-export-area">
+
+    <!-- PŁÓTNO -->
+    <div class="stage-wrapper" id="stageWrapper">
+
+      <button
+        class="close-fullscreen-btn"
+        onclick="toggleFullscreen()"
+      >
+        Close Fullscreen
+      </button>
+
+      <div id="stage" class="comparison-stage">
+        <div id="gridOverlay" class="grid-overlay"></div>
+      </div>
+
     </div>
+
+    <!-- TABELA -->
+    <div id="comparisonTableContainer" hidden>
+      <table id="comparisonTable">
+        <thead>
+          <tr>
+            <th class="building-column">Building</th>
+            <th class="height-column">Height</th>
+            <th class="year-column">Year Built</th>
+          </tr>
+        </thead>
+
+        <tbody id="comparisonTableBody"></tbody>
+      </table>
+    </div>
+
   </div>
+
+  <!-- Biblioteka do tworzenia obrazu PNG -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script src="script.js"></script>
+
 </body>
 </html>
