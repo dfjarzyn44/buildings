@@ -358,6 +358,54 @@
   "thumbnail": "Mini/st-basils-cathedral.mini.webp",
   "image_2d": "Buildings2D/st-basils-cathedral.webp",
   "scale_multiplier": 0.5
-}
+},
+  {
+    "id": "cologne-cathedral",
+    "name": "Cologne Cathedral",
+    "country": "Germany",
+    "city": "Cologne",
+    "category": "Cathedrals & Churches",
+    "height_m": "157 m / 515 ft",
+    "year_built": 1880,
+    "thumbnail": "Mini/cologne-cathedral.mini.webp",
+    "image_2d": "Buildings2D/cologne-cathedral.webp",
+    "scale_multiplier": 1.0
+  },
+  {
+    "id": "stonehenge",
+    "name": "Stonehenge",
+    "country": "United Kingdom",
+    "city": "Wiltshire",
+    "category": "Ancient Monuments",
+    "height_m": "7.3 m / 24 ft",
+    "year_built": "2500 BC",
+    "thumbnail": "Mini/stonehenge.mini.webp",
+    "image_2d": "Buildings2D/stonehenge.webp",
+    "scale_multiplier": 0.25
+  },
+  {
+    "id": "seville-cathedral",
+    "name": "Seville Cathedral",
+    "country": "Spain",
+    "city": "Seville",
+    "category": "Cathedrals & Churches",
+    "height_m": "105 m / 344 ft",
+    "year_built": 1507,
+    "thumbnail": "Mini/seville-cathedral.mini.webp",
+    "image_2d": "Buildings2D/seville-cathedral.webp",
+    "scale_multiplier": 1.0
+  },
+  {
+    "id": "westminster-abbey",
+    "name": "Westminster Abbey",
+    "country": "United Kingdom",
+    "city": "London",
+    "category": "Cathedrals & Churches",
+    "height_m": "69 m / 225 ft",
+    "year_built": 1245,
+    "thumbnail": "Mini/westminster-abbey.mini.webp",
+    "image_2d": "Buildings2D/westminster-abbey.webp",
+    "scale_multiplier": 1.0
+  }
 
 ]
